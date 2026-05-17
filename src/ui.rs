@@ -54,7 +54,12 @@ impl UiBuilder {
 
     fn build_app_list() -> ListBox {
         // .vexpand will push the footer to the bottom of the window
-        let list = ListBox::builder().vexpand(true).build();
+        let list = ListBox::builder()
+            .vexpand(true)
+            .focus_on_click(false)
+            .focusable(false)
+            .selection_mode(gtk4::SelectionMode::None)
+            .build();
 
         // Hardcode list of apps for now
         let apps = ["kitty", "spotify"];
