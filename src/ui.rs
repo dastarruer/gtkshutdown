@@ -1,4 +1,4 @@
-use gtk4::{Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation};
+use gtk4::{Align, Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation};
 use gtk4::{ListBox, prelude::*};
 
 pub struct UiBuilder {
@@ -45,6 +45,7 @@ impl UiBuilder {
 
         let shutdown_header = Label::builder()
             .label(format!("Closing {num_apps} apps..."))
+            .css_classes(["title"])
             .build();
 
         header.append(&shutdown_header);
