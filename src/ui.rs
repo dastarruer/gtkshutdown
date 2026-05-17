@@ -9,8 +9,8 @@ impl UiBuilder {
     pub fn new(app: &Application) -> Self {
         let window = ApplicationWindow::builder()
             .application(app)
-            .default_width(1000)
-            .default_height(200)
+            .default_width(600)
+            .default_height(500)
             .decorated(false)
             .resizable(false)
             .modal(true)
