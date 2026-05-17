@@ -1,0 +1,33 @@
+{
+  "languages": {
+    "Nix": {
+      "tab_size": 2,
+      "language_servers": ["nixd", "!nil"],
+      "formatter": {
+        "external": {
+          "command": "alejandra",
+          "arguments": ["--quiet"]
+        }
+      }
+    },
+    "Rust": {
+      "language_servers": ["rust-analyzer"],
+      "format_on_save": "on"
+    }
+  },
+  "lsp": {
+    "rust-analyzer": {
+      "binary": {
+        "ignore_system_version": false,
+        "path": "rust-analyzer",
+        "arguments": []
+      },
+      "initialization_options": {
+        "checkOnSave": true,
+        "check": {
+          "command": "clippy"
+        }
+      }
+    }
+  }
+}
