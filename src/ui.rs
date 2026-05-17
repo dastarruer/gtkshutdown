@@ -7,6 +7,8 @@ pub struct UiBuilder {
 
 impl UiBuilder {
     pub fn new(app: &Application) -> Self {
+        Self::load_css();
+
         let window = ApplicationWindow::builder()
             .application(app)
             .default_width(600)
@@ -25,6 +27,17 @@ impl UiBuilder {
 
         window.set_child(Some(&root));
         Self { window }
+    }
+
+    fn load_css() {
+        let provider = gtk4::CssProvider::new();
+        provider.load_from_data(include_str!("assets/style.css"));
+
+        gtk4::style_context_add_provider_for_display(
+            &gtk4::gdk::Display::default().expect("Could not connect to a display."),
+            &provider,
+            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
     }
 
     fn build_header(num_apps: i8) -> Box {
