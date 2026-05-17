@@ -53,11 +53,12 @@ impl UiBuilder {
     }
 
     fn build_app_list() -> ListBox {
-        // .vexpand will push the footer to the bottom of the window
         let list = ListBox::builder()
+            // .vexpand will push the footer to the bottom of the window
             .vexpand(true)
             .focus_on_click(false)
             .focusable(false)
+            .css_classes(["app-list"])
             .selection_mode(gtk4::SelectionMode::None)
             .build();
 
@@ -68,6 +69,7 @@ impl UiBuilder {
             let row = ListBoxRow::builder()
                 .activatable(false)
                 .can_focus(false)
+                .halign(Align::Start)
                 .build();
 
             let row_box = Box::new(Orientation::Vertical, 8);
