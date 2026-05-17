@@ -78,7 +78,12 @@ impl UiBuilder {
     }
 
     fn build_footer() -> Box {
-        let footer = Box::new(Orientation::Horizontal, 8);
+        let footer = Box::builder()
+            .orientation(Orientation::Horizontal)
+            .spacing(8)
+            .halign(Align::End)
+            .css_classes(["footer"])
+            .build();
 
         let force_quit_btn = Button::builder().label("Force quit anyway").build();
         let cancel_btn = Button::builder().label("Cancel").build();
