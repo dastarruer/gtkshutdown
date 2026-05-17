@@ -1,5 +1,5 @@
-use gtk4::prelude::*;
-use gtk4::{Application, ApplicationWindow, Box, Label, Orientation};
+use gtk4::{Application, ApplicationWindow, Box, Label, ListBoxRow, Orientation};
+use gtk4::{ListBox, prelude::*};
 
 pub struct UiBuilder {
     pub window: ApplicationWindow,
@@ -19,20 +19,21 @@ impl UiBuilder {
 
         let root = Box::new(Orientation::Vertical, 8);
 
-        root.append(&Self::build_header());
+        root.append(&Self::build_header(2));
         root.append(&Self::build_app_list());
 
         window.set_child(Some(&root));
         Self { window }
     }
 
-    fn build_header() -> Box {
+    fn build_header(num_apps: i8) -> Box {
         let header = Box::new(Orientation::Vertical, 0);
 
-        let shutdown_header = Label::builder().label("Shutting down...").build();
+        let shutdown_header = Label::builder()
+            .label(format!("Closing {num_apps} apps..."))
+            .build();
 
         header.append(&shutdown_header);
-
         header
     }
 
