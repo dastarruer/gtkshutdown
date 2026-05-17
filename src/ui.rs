@@ -1,4 +1,4 @@
-use gtk4::{Application, ApplicationWindow, Box, Label, ListBoxRow, Orientation};
+use gtk4::{Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation};
 use gtk4::{ListBox, prelude::*};
 
 pub struct UiBuilder {
@@ -21,6 +21,7 @@ impl UiBuilder {
 
         root.append(&Self::build_header(2));
         root.append(&Self::build_app_list());
+        root.append(&Self::build_footer());
 
         window.set_child(Some(&root));
         Self { window }
@@ -38,7 +39,8 @@ impl UiBuilder {
     }
 
     fn build_app_list() -> ListBox {
-        let list = ListBox::new();
+        // .vexpand will push the footer to the bottom of the window
+        let list = ListBox::builder().vexpand(true).build();
 
         // Hardcode list of apps for now
         let apps = ["kitty", "spotify"];
@@ -59,5 +61,17 @@ impl UiBuilder {
         }
 
         list
+    }
+
+    fn build_footer() -> Box {
+        let footer = Box::new(Orientation::Horizontal, 8);
+
+        let force_quit_btn = Button::builder().label("Force quit anyway").build();
+        let cancel_btn = Button::builder().label("Cancel").build();
+
+        footer.append(&force_quit_btn);
+        footer.append(&cancel_btn);
+
+        footer
     }
 }
