@@ -14,7 +14,7 @@ impl UiBuilder {
             .decorated(false)
             .resizable(false)
             .modal(true)
-            .title("Hello world!!!!")
+            .title("gtkshutdown")
             .build();
 
         let root = Box::new(Orientation::Vertical, 8);
