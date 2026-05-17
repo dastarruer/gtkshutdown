@@ -90,6 +90,8 @@
         # RUST
         rust-toolchain
         rust-analyzer-nightly
+        pkg-config
+        gtk4
       ];
 
       shellHook = ''
