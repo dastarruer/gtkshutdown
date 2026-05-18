@@ -1,8 +1,8 @@
 use hyprland::{
     data::{Client, Clients},
-    dispatch::{Dispatch, DispatchType, WindowIdentifier},
     shared::HyprData,
 };
+use nix::{sys::signal::Signal, unistd::Pid};
 
 use crate::APP_ID;
 
@@ -36,11 +36,13 @@ impl AppState {
     }
 }
 
-pub fn close_clients(state: &AppState) {
+pub fn kill_clients(state: &AppState) -> nix::Result<()> {
     for client in &state.clients {
-        Dispatch::call(DispatchType::CloseWindow(WindowIdentifier::Address(
-            client.address.clone(),
-        )))
-        .expect("Failed to close client");
+        let pid = Pid::from_raw(client.pid);
+        let signal = Signal::SIGTERM; // Use SIGTERM for graceful shutdown
+
+        nix::sys::signal::kill(pid, signal)?;
     }
+
+    Ok(())
 }

@@ -4,7 +4,7 @@ mod ui;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use app::{AppState, close_clients};
+use app::{AppState, kill_clients};
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;
@@ -21,7 +21,7 @@ fn main() -> glib::ExitCode {
 
         let mut ui = UiBuilder::new(app, &state.borrow());
 
-        close_clients(&state.borrow());
+        kill_clients(&state.borrow()).unwrap_or_else(|e| panic!("Failed to kill process: {e}"));
 
         ui.window.present();
 
