@@ -7,6 +7,17 @@
 
 .app-list {
     margin-left: 135px;
+    margin-right: 135px;
+}
+
+.app-class {
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.app-title {
+    font-size: 0.9rem;
+    font-style: italic;
 }
 
 .footer {

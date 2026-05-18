@@ -13,7 +13,7 @@ impl UiBuilder {
 
         let window = ApplicationWindow::builder()
             .application(app)
-            .default_width(600)
+            .default_width(1000)
             .default_height(500)
             .decorated(false)
             .resizable(false)
@@ -73,8 +73,21 @@ impl UiBuilder {
 
             let row_box = Box::new(Orientation::Vertical, 8);
 
-            let class_label = Label::builder().label(client.class).build();
+            let class_label = Label::builder()
+                .halign(Align::Start)
+                .css_classes(["app-class"])
+                .label(client.class)
+                .build();
             row_box.append(&class_label);
+
+            let title_label = Label::builder()
+                .halign(Align::Start)
+                .css_classes(["app-title"])
+                .label(client.title)
+                .ellipsize(gtk4::pango::EllipsizeMode::End)
+                .max_width_chars(1000)
+                .build();
+            row_box.append(&title_label);
 
             row.set_child(Some(&row_box));
 
