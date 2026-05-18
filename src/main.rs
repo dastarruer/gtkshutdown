@@ -1,10 +1,10 @@
-mod app_state;
+mod app;
 mod ui;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use app_state::AppState;
+use app::{AppState, close_clients};
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;
@@ -18,9 +18,12 @@ fn main() -> glib::ExitCode {
         let state = Rc::new(RefCell::new(
             AppState::new().expect("Failed to get clients from Hyprland"),
         ));
+        let state_clone = Rc::clone(&state);
+
         let ui = Rc::new(RefCell::new(UiBuilder::new(app, Rc::clone(&state))));
         let ui_clone = Rc::clone(&ui);
 
+        close_clients(state_clone);
         glib::timeout_add_local(std::time::Duration::from_millis(150), move || {
             state
                 .borrow_mut()

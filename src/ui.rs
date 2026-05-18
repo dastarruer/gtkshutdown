@@ -28,7 +28,7 @@ impl UiBuilder {
 
         let root = Box::new(Orientation::Vertical, 8);
         let app_list = Self::build_app_list(&state);
-        let header = Self::build_header(state.borrow().clients.iter().count() as i8);
+        let header = Self::build_header(state.borrow().get_num_clients());
 
         root.append(&header);
         root.append(&app_list);
@@ -44,7 +44,7 @@ impl UiBuilder {
 
     pub fn update(&mut self, state: &Rc<RefCell<AppState>>) {
         Self::update_app_list(&self.app_list, state);
-        Self::update_header(&self.header, state.borrow().clients.iter().count() as i8);
+        Self::update_header(&self.header, state.borrow().get_num_clients());
     }
 
     fn load_css() {
@@ -58,14 +58,19 @@ impl UiBuilder {
         );
     }
 
-    fn build_header(num_apps: i8) -> Box {
+    fn build_header(num_apps: usize) -> Box {
         let header = Box::new(Orientation::Vertical, 0);
         Self::update_header(&header, num_apps);
 
         header
     }
 
-    fn update_header(header: &Box, num_apps: i8) {
+    fn update_header(header: &Box, num_apps: usize) {
+        // Clear header
+        while let Some(row) = header.first_child() {
+            header.remove(&row);
+        }
+
         let shutdown_header = Label::builder()
             .label(format!("Closing {num_apps} apps..."))
             .css_classes(["title"])
