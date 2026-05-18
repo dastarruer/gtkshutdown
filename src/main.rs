@@ -19,6 +19,10 @@ struct Args {
     /// still shown.
     #[arg(short, long, action)]
     dry_run: bool,
+
+    /// Set a command to be run after all apps have shut down.
+    #[arg(short, long)]
+    post_cmd: String,
 }
 
 fn main() -> glib::ExitCode {
@@ -33,6 +37,7 @@ fn main() -> glib::ExitCode {
         let mut ui = UiBuilder::new(app, &state.borrow());
         ui.window.present();
 
+        let post_cmd = args.post_cmd.clone();
         glib::timeout_add_local(std::time::Duration::from_millis(150), move || {
             state
                 .borrow_mut()
@@ -48,6 +53,19 @@ fn main() -> glib::ExitCode {
 
             if state.borrow().get_num_clients() == 0 {
                 ui.window.close();
+
+                let post_cmd = post_cmd.split(" ").collect::<Vec<&str>>();
+                let command = post_cmd
+                    .first()
+                    .expect("--post-cmd does not contain a valid command.");
+                let args = post_cmd.iter().skip(1).cloned().collect::<Vec<&str>>();
+                std::process::Command::new(command)
+                    .args(args)
+                    .spawn()
+                    .expect("Unable to execute command in --post-cmd")
+                    .wait()
+                    .expect("Unable to execute command in --post-cmd");
+
                 return glib::ControlFlow::Break;
             }
 
