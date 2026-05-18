@@ -31,11 +31,6 @@ fn main() -> glib::ExitCode {
         ));
 
         let mut ui = UiBuilder::new(app, &state.borrow());
-
-        if !args.dry_run {
-            kill_clients(&state.borrow()).unwrap_or_else(|e| panic!("Failed to kill process: {e}"));
-        }
-
         ui.window.present();
 
         glib::timeout_add_local(std::time::Duration::from_millis(150), move || {
@@ -45,7 +40,7 @@ fn main() -> glib::ExitCode {
                 .expect("Failed to get clients from Hyprland");
 
             if !args.dry_run {
-                kill_clients(&state.borrow())
+                kill_clients(&mut state.borrow_mut())
                     .unwrap_or_else(|e| panic!("Failed to kill process: {e}"));
             }
 
