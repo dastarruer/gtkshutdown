@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use hyprland::{
     data::{Client, Clients},
     dispatch::{Dispatch, DispatchType, WindowIdentifier},
@@ -38,8 +36,8 @@ impl AppState {
     }
 }
 
-pub fn close_clients(state: Rc<RefCell<AppState>>) {
-    for client in &state.borrow().clients {
+pub fn close_clients(state: &AppState) {
+    for client in &state.clients {
         Dispatch::call(DispatchType::CloseWindow(WindowIdentifier::Address(
             client.address.clone(),
         )))

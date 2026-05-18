@@ -18,23 +18,22 @@ fn main() -> glib::ExitCode {
         let state = Rc::new(RefCell::new(
             AppState::new().expect("Failed to get clients from Hyprland"),
         ));
-        let state_clone = Rc::clone(&state);
 
-        let ui = Rc::new(RefCell::new(UiBuilder::new(app, Rc::clone(&state))));
-        let ui_clone = Rc::clone(&ui);
+        let mut ui = UiBuilder::new(app, &state.borrow());
 
-        close_clients(state_clone);
+        close_clients(&state.borrow());
+
+        ui.window.present();
+
         glib::timeout_add_local(std::time::Duration::from_millis(150), move || {
             state
                 .borrow_mut()
                 .refresh()
                 .expect("Failed to get clients from Hyprland");
-            ui_clone.borrow_mut().update(&state);
+            ui.update(&state.borrow());
 
             glib::ControlFlow::Continue
         });
-
-        ui.borrow().window.present();
     });
 
     app.run()

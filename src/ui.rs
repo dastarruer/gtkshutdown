@@ -1,6 +1,3 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-
 use gtk4::{Align, Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation};
 use gtk4::{ListBox, prelude::*};
 
@@ -13,7 +10,7 @@ pub struct UiBuilder {
 }
 
 impl UiBuilder {
-    pub fn new(app: &Application, state: Rc<RefCell<AppState>>) -> Self {
+    pub fn new(app: &Application, state: &AppState) -> Self {
         Self::load_css();
 
         let window = ApplicationWindow::builder()
@@ -27,8 +24,8 @@ impl UiBuilder {
             .build();
 
         let root = Box::new(Orientation::Vertical, 8);
-        let app_list = Self::build_app_list(&state);
-        let header = Self::build_header(state.borrow().get_num_clients());
+        let app_list = Self::build_app_list(state);
+        let header = Self::build_header(state.get_num_clients());
 
         root.append(&header);
         root.append(&app_list);
@@ -42,9 +39,9 @@ impl UiBuilder {
         }
     }
 
-    pub fn update(&mut self, state: &Rc<RefCell<AppState>>) {
+    pub fn update(&mut self, state: &AppState) {
         Self::update_app_list(&self.app_list, state);
-        Self::update_header(&self.header, state.borrow().get_num_clients());
+        Self::update_header(&self.header, state.get_num_clients());
     }
 
     fn load_css() {
@@ -79,7 +76,7 @@ impl UiBuilder {
         header.append(&shutdown_header);
     }
 
-    fn build_app_list(state: &Rc<RefCell<AppState>>) -> ListBox {
+    fn build_app_list(state: &AppState) -> ListBox {
         let list = ListBox::builder()
             // .vexpand will push the footer to the bottom of the window
             .vexpand(true)
@@ -93,14 +90,14 @@ impl UiBuilder {
         list
     }
 
-    fn update_app_list(list: &ListBox, state: &Rc<RefCell<AppState>>) {
+    fn update_app_list(list: &ListBox, state: &AppState) {
         // Clear list
         while let Some(row) = list.first_child() {
             list.remove(&row);
         }
 
         // Repopulate
-        for client in &state.borrow().clients {
+        for client in &state.clients {
             // Don't display the shutdown app
             if client.class == crate::APP_ID {
                 continue;
