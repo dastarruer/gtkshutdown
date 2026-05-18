@@ -9,10 +9,10 @@ use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;
 
+pub const APP_ID: &str = "io.github.dastarruer.gtkshutdown";
+
 fn main() -> glib::ExitCode {
-    let app = Application::builder()
-        .application_id("io.github.dastarruer.gtkshutdown")
-        .build();
+    let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(|app| {
         let state = Rc::new(RefCell::new(

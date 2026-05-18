@@ -87,6 +87,11 @@ impl UiBuilder {
 
         // Repopulate
         for client in &state.borrow().clients {
+            // Don't display the shutdown app
+            if client.class == crate::APP_ID {
+                continue;
+            }
+
             let row = ListBoxRow::builder()
                 .activatable(false)
                 .can_focus(false)
