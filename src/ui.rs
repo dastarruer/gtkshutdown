@@ -4,11 +4,12 @@ use std::rc::Rc;
 use gtk4::{Align, Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation};
 use gtk4::{ListBox, prelude::*};
 
-use crate::app_state::AppState;
+use crate::app::AppState;
 
 pub struct UiBuilder {
     pub window: ApplicationWindow,
     app_list: ListBox,
+    header: Box,
 }
 
 impl UiBuilder {
@@ -27,19 +28,23 @@ impl UiBuilder {
 
         let root = Box::new(Orientation::Vertical, 8);
         let app_list = Self::build_app_list(&state);
+        let header = Self::build_header(state.borrow().clients.iter().count() as i8);
 
-        root.append(&Self::build_header(
-            state.borrow().clients.iter().count() as i8
-        ));
+        root.append(&header);
         root.append(&app_list);
         root.append(&Self::build_footer());
 
         window.set_child(Some(&root));
-        Self { window, app_list }
+        Self {
+            window,
+            app_list,
+            header,
+        }
     }
 
     pub fn update(&mut self, state: &Rc<RefCell<AppState>>) {
         Self::update_app_list(&self.app_list, state);
+        Self::update_header(&self.header, state.borrow().clients.iter().count() as i8);
     }
 
     fn load_css() {
@@ -55,14 +60,18 @@ impl UiBuilder {
 
     fn build_header(num_apps: i8) -> Box {
         let header = Box::new(Orientation::Vertical, 0);
+        Self::update_header(&header, num_apps);
 
+        header
+    }
+
+    fn update_header(header: &Box, num_apps: i8) {
         let shutdown_header = Label::builder()
             .label(format!("Closing {num_apps} apps..."))
             .css_classes(["title"])
             .build();
 
         header.append(&shutdown_header);
-        header
     }
 
     fn build_app_list(state: &Rc<RefCell<AppState>>) -> ListBox {
