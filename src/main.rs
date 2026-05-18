@@ -1,5 +1,7 @@
+mod app_state;
 mod ui;
 
+use app_state::AppState;
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;
@@ -10,7 +12,8 @@ fn main() -> glib::ExitCode {
         .build();
 
     app.connect_activate(|app| {
-        let ui = UiBuilder::new(app);
+        let state = AppState::new().expect("Failed to get clients from Hyprland");
+        let ui = UiBuilder::new(app, state);
 
         ui.window.present();
     });

@@ -1,12 +1,14 @@
 use gtk4::{Align, Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation};
 use gtk4::{ListBox, prelude::*};
 
+use crate::app_state::AppState;
+
 pub struct UiBuilder {
     pub window: ApplicationWindow,
 }
 
 impl UiBuilder {
-    pub fn new(app: &Application) -> Self {
+    pub fn new(app: &Application, state: AppState) -> Self {
         Self::load_css();
 
         let window = ApplicationWindow::builder()
@@ -21,8 +23,8 @@ impl UiBuilder {
 
         let root = Box::new(Orientation::Vertical, 8);
 
-        root.append(&Self::build_header(2));
-        root.append(&Self::build_app_list());
+        root.append(&Self::build_header(state.clients.iter().count() as i8));
+        root.append(&Self::build_app_list(state));
         root.append(&Self::build_footer());
 
         window.set_child(Some(&root));
@@ -52,7 +54,7 @@ impl UiBuilder {
         header
     }
 
-    fn build_app_list() -> ListBox {
+    fn build_app_list(state: AppState) -> ListBox {
         let list = ListBox::builder()
             // .vexpand will push the footer to the bottom of the window
             .vexpand(true)
@@ -62,10 +64,7 @@ impl UiBuilder {
             .selection_mode(gtk4::SelectionMode::None)
             .build();
 
-        // Hardcode list of apps for now
-        let apps = ["kitty", "spotify"];
-
-        for app in apps {
+        for client in state.clients {
             let row = ListBoxRow::builder()
                 .activatable(false)
                 .can_focus(false)
@@ -73,8 +72,9 @@ impl UiBuilder {
                 .build();
 
             let row_box = Box::new(Orientation::Vertical, 8);
-            let name_label = Label::builder().label(app).build();
-            row_box.append(&name_label);
+
+            let class_label = Label::builder().label(client.class).build();
+            row_box.append(&class_label);
 
             row.set_child(Some(&row_box));
 
