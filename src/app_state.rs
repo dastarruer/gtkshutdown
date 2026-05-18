@@ -10,4 +10,9 @@ impl AppState {
 
         Ok(Self { clients })
     }
+
+    pub fn refresh(&mut self) -> hyprland::Result<()> {
+        self.clients = Clients::get()?;
+        Ok(())
+    }
 }

@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use gtk4::{Align, Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation};
 use gtk4::{ListBox, prelude::*};
 
@@ -5,10 +8,11 @@ use crate::app_state::AppState;
 
 pub struct UiBuilder {
     pub window: ApplicationWindow,
+    app_list: ListBox,
 }
 
 impl UiBuilder {
-    pub fn new(app: &Application, state: AppState) -> Self {
+    pub fn new(app: &Application, state: Rc<RefCell<AppState>>) -> Self {
         Self::load_css();
 
         let window = ApplicationWindow::builder()
@@ -22,13 +26,20 @@ impl UiBuilder {
             .build();
 
         let root = Box::new(Orientation::Vertical, 8);
+        let app_list = Self::build_app_list(&state);
 
-        root.append(&Self::build_header(state.clients.iter().count() as i8));
-        root.append(&Self::build_app_list(state));
+        root.append(&Self::build_header(
+            state.borrow().clients.iter().count() as i8
+        ));
+        root.append(&app_list);
         root.append(&Self::build_footer());
 
         window.set_child(Some(&root));
-        Self { window }
+        Self { window, app_list }
+    }
+
+    pub fn update(&mut self, state: &Rc<RefCell<AppState>>) {
+        Self::update_app_list(&self.app_list, state);
     }
 
     fn load_css() {
@@ -54,7 +65,7 @@ impl UiBuilder {
         header
     }
 
-    fn build_app_list(state: AppState) -> ListBox {
+    fn build_app_list(state: &Rc<RefCell<AppState>>) -> ListBox {
         let list = ListBox::builder()
             // .vexpand will push the footer to the bottom of the window
             .vexpand(true)
@@ -64,7 +75,18 @@ impl UiBuilder {
             .selection_mode(gtk4::SelectionMode::None)
             .build();
 
-        for client in state.clients {
+        Self::update_app_list(&list, state);
+        list
+    }
+
+    fn update_app_list(list: &ListBox, state: &Rc<RefCell<AppState>>) {
+        // Clear list
+        while let Some(row) = list.first_child() {
+            list.remove(&row);
+        }
+
+        // Repopulate
+        for client in &state.borrow().clients {
             let row = ListBoxRow::builder()
                 .activatable(false)
                 .can_focus(false)
@@ -76,14 +98,14 @@ impl UiBuilder {
             let class_label = Label::builder()
                 .halign(Align::Start)
                 .css_classes(["app-class"])
-                .label(client.class)
+                .label(client.class.clone())
                 .build();
             row_box.append(&class_label);
 
             let title_label = Label::builder()
                 .halign(Align::Start)
                 .css_classes(["app-title"])
-                .label(client.title)
+                .label(client.title.clone())
                 .ellipsize(gtk4::pango::EllipsizeMode::End)
                 .max_width_chars(1000)
                 .build();
@@ -93,8 +115,6 @@ impl UiBuilder {
 
             list.append(&row);
         }
-
-        list
     }
 
     fn build_footer() -> Box {
