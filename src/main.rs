@@ -46,6 +46,11 @@ fn main() -> glib::ExitCode {
 
             ui.update(&state.borrow());
 
+            if state.borrow().get_num_clients() == 0 {
+                ui.window.close();
+                return glib::ControlFlow::Break;
+            }
+
             glib::ControlFlow::Continue
         });
     });
