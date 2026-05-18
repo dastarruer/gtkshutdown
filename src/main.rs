@@ -43,6 +43,12 @@ fn main() -> glib::ExitCode {
                 .borrow_mut()
                 .refresh()
                 .expect("Failed to get clients from Hyprland");
+
+            if !args.dry_run {
+                kill_clients(&state.borrow())
+                    .unwrap_or_else(|e| panic!("Failed to kill process: {e}"));
+            }
+
             ui.update(&state.borrow());
 
             glib::ControlFlow::Continue
