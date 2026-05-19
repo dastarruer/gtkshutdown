@@ -3,7 +3,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use hyprland::{data::Clients, shared::HyprData};
+use hyprland::{
+    data::{Clients, Layers},
+    shared::HyprData,
+};
 use nix::{sys::signal::Signal, unistd::Pid};
 
 use crate::{
@@ -34,13 +37,23 @@ impl AppState<HyprlandClient> {
     }
 
     fn get_clients() -> hyprland::Result<Vec<HyprlandClient>> {
-        Ok(Clients::get()?
+        let windows = Clients::get()?;
+        let windows = windows
             .iter()
             // Filter out gtkshutdown so the app doesn't kill itself
             .filter(|c| c.class != APP_ID)
             .cloned()
-            .map(HyprlandClient::Window)
-            .collect())
+            .map(HyprlandClient::Window);
+
+        let layers = Layers::get()?;
+        let layers = layers
+            .iter()
+            .flat_map(|(_, display)| display.iter())
+            .flat_map(|(_, layers)| layers.iter())
+            .cloned()
+            .map(HyprlandClient::Layer);
+
+        Ok(windows.chain(layers).collect())
     }
 }
 

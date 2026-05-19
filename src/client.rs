@@ -10,8 +10,6 @@ pub trait WaylandClient {
 #[derive(Clone)]
 pub enum HyprlandClient {
     Window(Client),
-    #[allow(dead_code)]
-    // Will use this later
     Layer(LayerClient),
 }
 
