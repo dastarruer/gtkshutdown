@@ -26,17 +26,17 @@ impl<T: WaylandClient> AppState<T> {
 
 impl AppState<HyprlandClient> {
     pub fn new() -> hyprland::Result<Self> {
-        let clients = Self::get_clients()?;
+        let clients = Self::get_open_clients()?;
 
         Ok(Self { clients })
     }
 
     pub fn refresh(&mut self) -> hyprland::Result<()> {
-        self.clients = Self::get_clients()?;
+        self.clients = Self::get_open_clients()?;
         Ok(())
     }
 
-    fn get_clients() -> hyprland::Result<Vec<HyprlandClient>> {
+    fn get_open_clients() -> hyprland::Result<Vec<HyprlandClient>> {
         let windows = Clients::get()?;
         let windows = windows
             .iter()
