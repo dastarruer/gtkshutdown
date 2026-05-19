@@ -3,19 +3,25 @@ use std::{
     time::{Duration, Instant},
 };
 
-use hyprland::{
-    data::{Client, Clients},
-    shared::HyprData,
-};
+use hyprland::{data::Clients, shared::HyprData};
 use nix::{sys::signal::Signal, unistd::Pid};
 
-use crate::APP_ID;
+use crate::{
+    APP_ID,
+    client::{HyprlandClient, WaylandClient},
+};
 
-pub struct AppState {
-    pub clients: Vec<Client>,
+pub struct AppState<T: WaylandClient> {
+    pub clients: Vec<T>,
 }
 
-impl AppState {
+impl<T: WaylandClient> AppState<T> {
+    pub fn get_num_clients(&self) -> usize {
+        self.clients.len()
+    }
+}
+
+impl AppState<HyprlandClient> {
     pub fn new() -> hyprland::Result<Self> {
         let clients = Self::get_clients()?;
 
@@ -27,16 +33,13 @@ impl AppState {
         Ok(())
     }
 
-    pub fn get_num_clients(&self) -> usize {
-        self.clients.len()
-    }
-
-    fn get_clients() -> hyprland::Result<Vec<Client>> {
+    fn get_clients() -> hyprland::Result<Vec<HyprlandClient>> {
         Ok(Clients::get()?
             .iter()
             // Filter out gtkshutdown so the app doesn't kill itself
             .filter(|c| c.class != APP_ID)
             .cloned()
+            .map(HyprlandClient::Window)
             .collect())
     }
 }
@@ -53,10 +56,9 @@ impl ClientKiller {
         }
     }
 
-    pub fn kill_clients(&mut self, clients: &Vec<Client>) -> nix::Result<()> {
+    pub fn kill_clients<T: WaylandClient>(&mut self, clients: &Vec<T>) -> nix::Result<()> {
         for client in clients {
-            let pid = Pid::from_raw(client.pid);
-            self.send_shutdown_signal(pid)?;
+            self.send_shutdown_signal(client.pid())?;
         }
 
         Ok(())

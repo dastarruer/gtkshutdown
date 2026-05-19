@@ -2,6 +2,7 @@ use gtk4::{Align, Application, ApplicationWindow, Box, Button, Label, ListBoxRow
 use gtk4::{ListBox, prelude::*};
 
 use crate::app::AppState;
+use crate::client::WaylandClient;
 
 pub struct UiBuilder {
     pub window: ApplicationWindow,
@@ -10,7 +11,7 @@ pub struct UiBuilder {
 }
 
 impl UiBuilder {
-    pub fn new(app: &Application, state: &AppState) -> Self {
+    pub fn new<T: WaylandClient>(app: &Application, state: &AppState<T>) -> Self {
         Self::load_css();
 
         let window = ApplicationWindow::builder()
@@ -39,7 +40,7 @@ impl UiBuilder {
         }
     }
 
-    pub fn update(&mut self, state: &AppState) {
+    pub fn update<T: WaylandClient>(&mut self, state: &AppState<T>) {
         Self::update_app_list(&self.app_list, state);
         Self::update_header(&self.header, state.get_num_clients());
     }
@@ -76,7 +77,7 @@ impl UiBuilder {
         header.append(&shutdown_header);
     }
 
-    fn build_app_list(state: &AppState) -> ListBox {
+    fn build_app_list<T: WaylandClient>(state: &AppState<T>) -> ListBox {
         let list = ListBox::builder()
             // .vexpand will push the footer to the bottom of the window
             .vexpand(true)
@@ -90,7 +91,7 @@ impl UiBuilder {
         list
     }
 
-    fn update_app_list(list: &ListBox, state: &AppState) {
+    fn update_app_list<T: WaylandClient>(list: &ListBox, state: &AppState<T>) {
         // Clear list
         while let Some(row) = list.first_child() {
             list.remove(&row);
@@ -99,7 +100,7 @@ impl UiBuilder {
         // Repopulate
         for client in &state.clients {
             // Don't display the shutdown app
-            if client.class == crate::APP_ID {
+            if client.app_id() == crate::APP_ID {
                 continue;
             }
 
@@ -114,21 +115,22 @@ impl UiBuilder {
             let class_label = Label::builder()
                 .halign(Align::Start)
                 .css_classes(["app-class"])
-                .label(client.class.clone())
+                .label(client.app_id())
                 .build();
             row_box.append(&class_label);
 
-            let title_label = Label::builder()
-                .halign(Align::Start)
-                .css_classes(["app-title"])
-                .label(client.title.clone())
-                .ellipsize(gtk4::pango::EllipsizeMode::End)
-                .max_width_chars(1000)
-                .build();
-            row_box.append(&title_label);
+            if let Some(title) = client.title() {
+                let title_label = Label::builder()
+                    .halign(Align::Start)
+                    .css_classes(["app-title"])
+                    .label(title)
+                    .ellipsize(gtk4::pango::EllipsizeMode::End)
+                    .max_width_chars(1000)
+                    .build();
+                row_box.append(&title_label);
+            }
 
             row.set_child(Some(&row_box));
-
             list.append(&row);
         }
     }
