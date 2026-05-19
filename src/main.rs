@@ -4,7 +4,7 @@ mod ui;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use app::{AppState, kill_clients};
+use app::{AppState, ClientKiller};
 use clap::Parser;
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
@@ -30,6 +30,7 @@ fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(move |app| {
+        let mut client_killer = ClientKiller::new();
         let state = Rc::new(RefCell::new(
             AppState::new().expect("Failed to get clients from Hyprland"),
         ));
@@ -45,7 +46,8 @@ fn main() -> glib::ExitCode {
                 .expect("Failed to get clients from Hyprland");
 
             if !args.dry_run {
-                kill_clients(&mut state.borrow_mut())
+                client_killer
+                    .kill_clients(&state.borrow().clients)
                     .unwrap_or_else(|e| panic!("Failed to kill process: {e}"));
             }
 
