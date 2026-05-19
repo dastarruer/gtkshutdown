@@ -69,26 +69,29 @@ impl ClientKiller {
         }
     }
 
-    pub fn kill_clients<T: WaylandClient>(&mut self, clients: &Vec<T>) -> nix::Result<()> {
+    pub fn kill_clients<T: WaylandClient>(&mut self, clients: &Vec<T>) -> anyhow::Result<()> {
         for client in clients {
-            self.send_shutdown_signal(client.pid())?;
+            self.kill_client(client)?;
         }
 
         Ok(())
     }
 
-    fn send_shutdown_signal(&mut self, pid: Pid) -> nix::Result<()> {
-        const SIGNAL: Signal = Signal::SIGTERM; // Use SIGTERM for graceful shutdown
-        const SIGKILL_TIMEOUT: Duration = Duration::from_secs(5);
+    fn kill_client<T: WaylandClient>(&mut self, client: &T) -> anyhow::Result<()> {
+        const SIGTERM_TIMEOUT: Duration = Duration::from_secs(5);
+        const SIGKILL_TIMEOUT: Duration = Duration::from_secs(30);
 
+        let pid = client.pid();
         match self.seen.get(&pid) {
-            // After a certain amount of time, send a force kill signal (SIGKILL).
+            Some(instant) if instant.elapsed() > SIGTERM_TIMEOUT => {
+                nix::sys::signal::kill(pid, Signal::SIGTERM)?;
+            }
             Some(instant) if instant.elapsed() > SIGKILL_TIMEOUT => {
                 nix::sys::signal::kill(pid, Signal::SIGKILL)?;
             }
             None => {
                 self.seen.insert(pid, Instant::now());
-                nix::sys::signal::kill(pid, SIGNAL)?;
+                client.gracefully_close()?;
             }
             _ => {}
         }
