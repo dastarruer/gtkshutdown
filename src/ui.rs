@@ -119,16 +119,15 @@ impl UiBuilder {
                 .build();
             row_box.append(&class_label);
 
-            if let Some(title) = client.title() {
-                let title_label = Label::builder()
-                    .halign(Align::Start)
-                    .css_classes(["app-title"])
-                    .label(title)
-                    .ellipsize(gtk4::pango::EllipsizeMode::End)
-                    .max_width_chars(1000)
-                    .build();
-                row_box.append(&title_label);
-            }
+            let title = client.title().unwrap_or("");
+            let title_label = Label::builder()
+                .halign(Align::Start)
+                .css_classes(["app-title"])
+                .label(title)
+                .ellipsize(gtk4::pango::EllipsizeMode::End)
+                .max_width_chars(1000)
+                .build();
+            row_box.append(&title_label);
 
             row.set_child(Some(&row_box));
             list.append(&row);
