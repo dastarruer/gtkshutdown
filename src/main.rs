@@ -49,7 +49,7 @@ fn main() -> glib::ExitCode {
             if !args.dry_run {
                 client_killer
                     .kill_clients(&state.borrow().clients)
-                    .unwrap_or_else(|e| panic!("Failed to kill process: {e}"));
+                    .expect("Failed to kill process.");
             }
 
             ui.update(&state.borrow());
