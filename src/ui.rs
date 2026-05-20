@@ -112,12 +112,12 @@ impl UiBuilder {
 
             let row_box = Box::new(Orientation::Vertical, 8);
 
-            let class_label = Label::builder()
+            let app_id_label = Label::builder()
                 .halign(Align::Start)
-                .css_classes(["app-class"])
+                .css_classes(["app-id"])
                 .label(client.app_id())
                 .build();
-            row_box.append(&class_label);
+            row_box.append(&app_id_label);
 
             let title = client.title().unwrap_or("");
             let title_label = Label::builder()
