@@ -53,7 +53,23 @@ impl AppState<HyprlandClient> {
             .cloned()
             .map(HyprlandClient::Layer);
 
-        Ok(windows.chain(layers).collect())
+        let mut clients = windows.chain(layers).collect::<Vec<HyprlandClient>>();
+        clients.sort_by_key(|c| {
+            // To place layers at the end of the vec, making them appear at the
+            // bottom of the app list
+            let is_layer = matches!(c, HyprlandClient::Layer(_));
+
+            // Also sort by app id so clients don't jump all over the place in
+            // the vec
+            //
+            // Could sort by pid to avoid cloning but this is negligible
+            // at best, so don't care
+            let app_id = c.app_id().to_owned();
+
+            (is_layer, app_id)
+        });
+
+        Ok(clients)
     }
 }
 
