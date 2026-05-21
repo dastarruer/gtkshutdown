@@ -101,7 +101,7 @@ impl ClientKiller {
 
     fn kill_client<T: WaylandClient>(&mut self, client: &T) -> anyhow::Result<()> {
         const SIGTERM_TIMEOUT: Duration = Duration::from_secs(5);
-        const SIGKILL_TIMEOUT: Duration = Duration::from_secs(30);
+        const SIGKILL_TIMEOUT: Duration = Duration::from_secs(15);
 
         let pid = client.pid();
 
