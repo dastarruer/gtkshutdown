@@ -7,7 +7,11 @@ use hyprland::{
     data::{Clients, Layers},
     shared::HyprData,
 };
-use nix::{sys::signal::Signal, unistd::Pid};
+use nix::{
+    errno::Errno,
+    sys::signal::{Signal, kill},
+    unistd::Pid,
+};
 
 use crate::{
     APP_ID,
@@ -90,6 +94,8 @@ impl ClientKiller {
             self.kill_client(client)?;
         }
 
+        // Remove processes that are dead
+        self.seen.retain(|c, _| Self::is_proc_alive(c.to_owned()));
         Ok(())
     }
 
@@ -98,15 +104,13 @@ impl ClientKiller {
         const SIGKILL_TIMEOUT: Duration = Duration::from_secs(30);
 
         let pid = client.pid();
+
         match self.seen.get(&pid) {
-            Some(instant) if instant.elapsed() > SIGTERM_TIMEOUT => {
-                nix::sys::signal::kill(pid, Signal::SIGTERM)?;
-            }
             Some(instant) if instant.elapsed() > SIGKILL_TIMEOUT => {
-                nix::sys::signal::kill(pid, Signal::SIGKILL)?;
+                kill(pid, Signal::SIGKILL)?;
             }
             Some(instant) if instant.elapsed() > SIGTERM_TIMEOUT => {
-                nix::sys::signal::kill(pid, Signal::SIGTERM)?;
+                kill(pid, Signal::SIGTERM)?;
             }
             None => {
                 self.seen.insert(pid, Instant::now());
@@ -116,5 +120,13 @@ impl ClientKiller {
         }
 
         Ok(())
+    }
+
+    fn is_proc_alive(pid: Pid) -> bool {
+        match kill(pid, None) {
+            Ok(_) => true,
+            Err(Errno::EPERM) => true, // If we don't have permission to kill, assume proc is still running
+            Err(_) => false,
+        }
     }
 }
