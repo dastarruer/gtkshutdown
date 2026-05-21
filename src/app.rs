@@ -105,6 +105,9 @@ impl ClientKiller {
             Some(instant) if instant.elapsed() > SIGKILL_TIMEOUT => {
                 nix::sys::signal::kill(pid, Signal::SIGKILL)?;
             }
+            Some(instant) if instant.elapsed() > SIGTERM_TIMEOUT => {
+                nix::sys::signal::kill(pid, Signal::SIGTERM)?;
+            }
             None => {
                 self.seen.insert(pid, Instant::now());
                 client.gracefully_close()?;
