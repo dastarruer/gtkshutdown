@@ -21,9 +21,10 @@ struct Args {
     #[arg(short, long, action)]
     dry_run: bool,
 
-    /// Set a command to be run after all apps have shut down.
+    /// Set a command to be run after all apps have shut down. By default,
+    /// gtkshutdown runs nothing after exiting.
     #[arg(short, long)]
-    post_cmd: String,
+    post_cmd: Option<String>,
 }
 
 fn main() -> glib::ExitCode {
@@ -57,17 +58,20 @@ fn main() -> glib::ExitCode {
             if state.borrow().get_num_clients() == 0 {
                 ui.window.close();
 
-                let post_cmd = post_cmd.split(" ").collect::<Vec<&str>>();
-                let command = post_cmd
-                    .first()
-                    .expect("--post-cmd does not contain a valid command.");
-                let args = post_cmd.iter().skip(1).cloned().collect::<Vec<&str>>();
-                std::process::Command::new(command)
-                    .args(args)
-                    .spawn()
-                    .expect("Unable to execute command in --post-cmd")
-                    .wait()
-                    .expect("Unable to execute command in --post-cmd");
+                if let Some(post_cmd) = &post_cmd {
+                    let post_cmd = post_cmd.split(" ").collect::<Vec<&str>>();
+                    let command = post_cmd
+                        .first()
+                        .expect("--post-cmd does not contain a valid command.");
+                    let args = post_cmd.iter().skip(1).cloned().collect::<Vec<&str>>();
+
+                    std::process::Command::new(command)
+                        .args(args)
+                        .spawn()
+                        .expect("Unable to execute command in --post-cmd")
+                        .wait()
+                        .expect("Unable to execute command in --post-cmd");
+                }
 
                 return glib::ControlFlow::Break;
             }
