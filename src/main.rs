@@ -5,8 +5,9 @@ mod ui;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use app::{AppState, ClientKiller};
+use app::AppState;
 use clap::Parser;
+use client::ClientKiller;
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;

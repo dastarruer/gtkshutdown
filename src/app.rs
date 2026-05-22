@@ -1,16 +1,6 @@
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
-
 use hyprland::{
     data::{Clients, Layers},
     shared::HyprData,
-};
-use nix::{
-    errno::Errno,
-    sys::signal::{Signal, kill},
-    unistd::Pid,
 };
 
 use crate::{
@@ -61,7 +51,7 @@ impl AppState<HyprlandClient> {
         clients.sort_by_key(|c| {
             // To place layers at the end of the vec, making them appear at the
             // bottom of the app list
-            let is_layer = matches!(c, HyprlandClient::Layer(_));
+            let is_layer = matches!(c, HyprlandClient::Layer(..));
 
             // Also sort by app id so clients don't jump all over the place in
             // the vec
@@ -74,59 +64,5 @@ impl AppState<HyprlandClient> {
         });
 
         Ok(clients)
-    }
-}
-
-pub struct ClientKiller {
-    /// Represents seen processes to figure out when to send SIGKILL signal
-    seen: HashMap<Pid, Instant>,
-}
-
-impl ClientKiller {
-    pub fn new() -> Self {
-        Self {
-            seen: HashMap::new(),
-        }
-    }
-
-    pub fn kill_clients<T: WaylandClient>(&mut self, clients: &Vec<T>) -> anyhow::Result<()> {
-        for client in clients {
-            self.kill_client(client)?;
-        }
-
-        // Remove processes that are dead
-        self.seen.retain(|c, _| Self::is_proc_alive(c.to_owned()));
-        Ok(())
-    }
-
-    fn kill_client<T: WaylandClient>(&mut self, client: &T) -> anyhow::Result<()> {
-        const SIGTERM_TIMEOUT: Duration = Duration::from_secs(5);
-        const SIGKILL_TIMEOUT: Duration = Duration::from_secs(15);
-
-        let pid = client.pid();
-
-        match self.seen.get(&pid) {
-            Some(instant) if instant.elapsed() > SIGKILL_TIMEOUT => {
-                kill(pid, Signal::SIGKILL)?;
-            }
-            Some(instant) if instant.elapsed() > SIGTERM_TIMEOUT => {
-                kill(pid, Signal::SIGTERM)?;
-            }
-            None => {
-                self.seen.insert(pid, Instant::now());
-                client.gracefully_close()?;
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
-    fn is_proc_alive(pid: Pid) -> bool {
-        match kill(pid, None) {
-            Ok(_) => true,
-            Err(Errno::EPERM) => true, // If we don't have permission to kill, assume proc is still running
-            Err(_) => false,
-        }
     }
 }
