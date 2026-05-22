@@ -8,6 +8,7 @@ use crate::{
     client::{HyprlandClient, WaylandClient},
 };
 
+#[derive(Clone)]
 pub struct AppState<T: WaylandClient> {
     pub clients: Vec<T>,
 }
