@@ -52,16 +52,16 @@ struct AppHandler<T: WaylandClient> {
     args: Args,
     state: Rc<RefCell<AppState<T>>>,
     ui: UiBuilder,
-    client_killer: ClientKiller,
+    client_killer: Rc<RefCell<ClientKiller>>,
 }
 
 impl AppHandler<HyprlandClient> {
     fn new(app: &Application, args: Args) -> anyhow::Result<Self> {
-        let client_killer = ClientKiller::new();
+        let client_killer = Rc::new(RefCell::new(ClientKiller::new()));
         let state = Rc::new(RefCell::new(
             AppState::new().context("Failed to get clients from Hyprland.")?,
         ));
-        let ui = UiBuilder::new(app, &state.borrow());
+        let ui = UiBuilder::new(app, Rc::clone(&state), Rc::clone(&client_killer));
 
         Ok(Self {
             args,
@@ -85,6 +85,7 @@ impl AppHandler<HyprlandClient> {
 
         if !self.args.dry_run {
             self.client_killer
+                .borrow_mut()
                 .kill_clients(&self.state.borrow().clients)
                 .context("Failed to kill process.")?;
         }

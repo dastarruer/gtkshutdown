@@ -1,10 +1,13 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use gtk4::{
     Align, Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation, glib,
 };
 use gtk4::{ListBox, prelude::*};
 
 use crate::app::AppState;
-use crate::client::WaylandClient;
+use crate::client::{ClientKiller, WaylandClient};
 
 pub struct UiBuilder {
     pub window: ApplicationWindow,
@@ -13,7 +16,11 @@ pub struct UiBuilder {
 }
 
 impl UiBuilder {
-    pub fn new<T: WaylandClient>(app: &Application, state: &AppState<T>) -> Self {
+    pub fn new<T: WaylandClient + 'static>(
+        app: &Application,
+        state: Rc<RefCell<AppState<T>>>,
+        client_killer: Rc<RefCell<ClientKiller>>,
+    ) -> Self {
         Self::load_css();
 
         let window = ApplicationWindow::builder()
@@ -27,12 +34,12 @@ impl UiBuilder {
             .build();
 
         let root = Box::new(Orientation::Vertical, 8);
-        let app_list = Self::build_app_list(state);
-        let header = Self::build_header(state.get_num_clients());
+        let app_list = Self::build_app_list(&state.borrow());
+        let header = Self::build_header(state.borrow().get_num_clients());
 
         root.append(&header);
         root.append(&app_list);
-        root.append(&Self::build_footer(&window));
+        root.append(&Self::build_footer(&window, client_killer, state));
 
         window.set_child(Some(&root));
         Self {
@@ -136,7 +143,11 @@ impl UiBuilder {
         }
     }
 
-    fn build_footer(window: &ApplicationWindow) -> Box {
+    fn build_footer<T: WaylandClient + 'static>(
+        window: &ApplicationWindow,
+        client_killer: Rc<RefCell<ClientKiller>>,
+        state: Rc<RefCell<AppState<T>>>,
+    ) -> Box {
         let footer = Box::builder()
             .orientation(Orientation::Horizontal)
             .spacing(8)
@@ -145,6 +156,14 @@ impl UiBuilder {
             .build();
 
         let force_quit_btn = Button::builder().label("Force quit anyway").build();
+
+        force_quit_btn.connect_clicked(move |_| {
+            client_killer
+                .borrow_mut()
+                .force_kill_clients(&state.borrow().clients)
+                .expect("Error while force-killing all apps with SIGKILL");
+        });
+
         let cancel_btn = Button::builder().label("Cancel").build();
 
         // In other words, close the window if cancel_btn is pressed

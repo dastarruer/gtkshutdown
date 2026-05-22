@@ -65,6 +65,14 @@ impl ClientKiller {
         }
     }
 
+    pub fn force_kill_clients<T: WaylandClient>(&self, clients: &Vec<T>) -> nix::Result<()> {
+        for client in clients {
+            kill(client.pid(), Signal::SIGKILL)?;
+        }
+
+        Ok(())
+    }
+
     pub fn kill_clients<T: WaylandClient>(&mut self, clients: &Vec<T>) -> anyhow::Result<()> {
         for client in clients {
             self.kill_client(client)?;
