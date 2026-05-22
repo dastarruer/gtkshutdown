@@ -109,6 +109,10 @@
         check-toml.enable = true;
         taplo.enable = true;
 
+        prettier = {
+          enable = true;
+          settings.configPath = ".prettierrc";
+        };
         markdownlint.enable = true;
       };
     };
@@ -121,7 +125,8 @@
     devShells.${system}.default = pkgs.mkShell {
       nativeBuildInputs = with pkgs; [
         # MARKDOWN
-        markdownlint-cli # Formatter
+        markdownlint-cli # Linter
+        prettier
 
         # NIX
         nixd # LSP
