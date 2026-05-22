@@ -1,4 +1,6 @@
-use gtk4::{Align, Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation};
+use gtk4::{
+    Align, Application, ApplicationWindow, Box, Button, Label, ListBoxRow, Orientation, glib,
+};
 use gtk4::{ListBox, prelude::*};
 
 use crate::app::AppState;
@@ -30,7 +32,7 @@ impl UiBuilder {
 
         root.append(&header);
         root.append(&app_list);
-        root.append(&Self::build_footer());
+        root.append(&Self::build_footer(&window));
 
         window.set_child(Some(&root));
         Self {
@@ -134,7 +136,7 @@ impl UiBuilder {
         }
     }
 
-    fn build_footer() -> Box {
+    fn build_footer(window: &ApplicationWindow) -> Box {
         let footer = Box::builder()
             .orientation(Orientation::Horizontal)
             .spacing(8)
@@ -144,6 +146,15 @@ impl UiBuilder {
 
         let force_quit_btn = Button::builder().label("Force quit anyway").build();
         let cancel_btn = Button::builder().label("Cancel").build();
+
+        // In other words, close the window if cancel_btn is pressed
+        cancel_btn.connect_clicked(glib::clone!(
+            #[weak]
+            window,
+            move |_| {
+                window.close();
+            }
+        ));
 
         footer.append(&force_quit_btn);
         footer.append(&cancel_btn);
