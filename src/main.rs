@@ -29,6 +29,25 @@ struct Args {
     post_cmd: Option<String>,
 }
 
+impl Args {
+    fn execute_post_cmd(&self) -> anyhow::Result<()> {
+        if let Some(post_cmd) = &self.post_cmd {
+            let post_cmd = post_cmd.split_whitespace().collect::<Vec<&str>>();
+
+            let command = post_cmd.first().context("Unable to parse --post_cmd.")?;
+
+            let args = post_cmd.iter().skip(1).cloned().collect::<Vec<&str>>();
+
+            std::process::Command::new(command)
+                .args(args)
+                .spawn()
+                .context("Unable to execute --post-cmd.")?;
+        }
+
+        Ok(())
+    }
+}
+
 struct AppHandler<T: WaylandClient> {
     args: Args,
     state: Rc<RefCell<AppState<T>>>,
@@ -37,19 +56,19 @@ struct AppHandler<T: WaylandClient> {
 }
 
 impl AppHandler<HyprlandClient> {
-    fn new(app: &Application, args: Args) -> Self {
+    fn new(app: &Application, args: Args) -> anyhow::Result<Self> {
         let client_killer = ClientKiller::new();
         let state = Rc::new(RefCell::new(
-            AppState::new().expect("Failed to get clients from Hyprland"),
+            AppState::new().context("Failed to get clients from Hyprland.")?,
         ));
         let ui = UiBuilder::new(app, &state.borrow());
 
-        Self {
+        Ok(Self {
             args,
             state,
             ui,
             client_killer,
-        }
+        })
     }
 
     /// Execute a single tick of the app.
@@ -85,36 +104,24 @@ fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(move |app| {
-        let mut handler = AppHandler::new(app, args.clone());
+        let mut handler = AppHandler::new(app, args.clone()).expect("Unable to start app");
         handler.ui.window.present();
 
-        glib::timeout_add_local(
-            std::time::Duration::from_millis(150),
-            move || match handler.tick() {
-                Ok(false) => glib::ControlFlow::Continue,
-                Ok(true) => {
-                    handler.ui.window.close();
+        glib::timeout_add_local(std::time::Duration::from_millis(150), move || match handler
+            .tick()
+            .expect("Error while running app tick")
+        {
+            true => {
+                handler.ui.window.close();
+                handler
+                    .args
+                    .execute_post_cmd()
+                    .expect("Error while executing --post-cmd");
 
-                    if let Some(post_cmd) = &handler.args.post_cmd {
-                        let post_cmd = post_cmd.split(" ").collect::<Vec<&str>>();
-                        let command = post_cmd
-                            .first()
-                            .expect("--post-cmd does not contain a valid command.");
-                        let args = post_cmd.iter().skip(1).cloned().collect::<Vec<&str>>();
-
-                        std::process::Command::new(command)
-                            .args(args)
-                            .spawn()
-                            .expect("Unable to execute command in --post-cmd")
-                            .wait()
-                            .expect("Unable to execute command in --post-cmd");
-                    }
-
-                    glib::ControlFlow::Break
-                }
-                Err(e) => panic!("Error while shutting down apps: {e}"),
-            },
-        );
+                glib::ControlFlow::Break
+            }
+            false => glib::ControlFlow::Continue,
+        });
     });
 
     // Overwrite gtk cli args to use our own
