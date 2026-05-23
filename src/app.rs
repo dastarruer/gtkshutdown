@@ -5,7 +5,7 @@ use hyprland::{
 
 use crate::{
     APP_ID,
-    client::{HyprlandClient, HyprlandClientKind, WaylandClient},
+    client::{HyprlandClient, WaylandClient},
 };
 
 #[derive(Clone)]
@@ -52,7 +52,7 @@ impl AppState<HyprlandClient> {
         clients.sort_by_key(|c| {
             // To place layers at the end of the vec, making them appear at the
             // bottom of the app list
-            let is_layer = matches!(c.kind(), HyprlandClientKind::Layer);
+            let is_layer = c.is_layer();
 
             // Also sort by app id so clients don't jump all over the place in
             // the vec

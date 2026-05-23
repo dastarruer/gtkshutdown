@@ -95,15 +95,15 @@ pub trait WaylandClient {
     fn pid(&self) -> &Pid;
     fn app_id(&self) -> &str;
     fn title(&self) -> Option<&str>;
-    fn kind(&self) -> &HyprlandClientKind;
+    fn is_layer(&self) -> bool;
     fn status(&self) -> &KillStatus;
     /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
     /// signal, so apps have a chance to gracefully exit.
     fn gracefully_close(&self) -> anyhow::Result<()>;
 }
 
-#[derive(Clone)]
-pub enum HyprlandClientKind {
+#[derive(Clone, PartialEq)]
+enum HyprlandClientKind {
     Window,
     Layer,
 }
@@ -153,8 +153,8 @@ impl WaylandClient for HyprlandClient {
         self.title.as_deref()
     }
 
-    fn kind(&self) -> &HyprlandClientKind {
-        &self.kind
+    fn is_layer(&self) -> bool {
+        self.kind == HyprlandClientKind::Layer
     }
 
     fn status(&self) -> &KillStatus {
