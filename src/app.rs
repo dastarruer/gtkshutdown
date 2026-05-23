@@ -5,7 +5,7 @@ use hyprland::{
 
 use crate::{
     APP_ID,
-    client::{HyprlandClient, WaylandClient},
+    client::{HyprlandClient, HyprlandClientKind, WaylandClient},
 };
 
 #[derive(Clone)]
@@ -38,7 +38,7 @@ impl AppState<HyprlandClient> {
             // Filter out gtkshutdown so the app doesn't kill itself
             .filter(|c| c.class != APP_ID)
             .cloned()
-            .map(HyprlandClient::Window);
+            .map(HyprlandClient::from);
 
         let layers = Layers::get()?;
         let layers = layers
@@ -46,13 +46,13 @@ impl AppState<HyprlandClient> {
             .flat_map(|(_, display)| display.iter())
             .flat_map(|(_, layers)| layers.iter())
             .cloned()
-            .map(HyprlandClient::Layer);
+            .map(HyprlandClient::from);
 
         let mut clients = windows.chain(layers).collect::<Vec<HyprlandClient>>();
         clients.sort_by_key(|c| {
             // To place layers at the end of the vec, making them appear at the
             // bottom of the app list
-            let is_layer = matches!(c, HyprlandClient::Layer(..));
+            let is_layer = matches!(c.kind(), HyprlandClientKind::Layer);
 
             // Also sort by app id so clients don't jump all over the place in
             // the vec

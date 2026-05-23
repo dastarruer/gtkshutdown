@@ -86,7 +86,7 @@ impl AppHandler<HyprlandClient> {
         if !self.args.dry_run {
             self.client_killer
                 .borrow_mut()
-                .kill_clients(&self.state.borrow().clients)
+                .kill_clients(&mut self.state.borrow_mut().clients)
                 .context("Failed to kill process.")?;
         }
 

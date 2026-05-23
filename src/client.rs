@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use hyprland::{
     data::{Client, LayerClient},
@@ -19,7 +16,7 @@ enum KillAction {
 }
 
 #[derive(Clone)]
-enum KillStatus {
+pub enum KillStatus {
     Alive,
     GracefulSent(Instant),
     TermSent(Instant),
@@ -53,39 +50,32 @@ impl KillStatus {
     }
 }
 
-pub struct ClientKiller {
-    /// Represents seen processes to figure out when to send SIGKILL signal
-    seen: HashMap<Pid, KillStatus>,
-}
+pub struct ClientKiller {}
 
 impl ClientKiller {
     pub fn new() -> Self {
-        Self {
-            seen: HashMap::new(),
-        }
+        Self {}
     }
 
     pub fn force_kill_clients<T: WaylandClient>(&self, clients: &[T]) -> nix::Result<()> {
         for client in clients {
-            kill(client.pid(), Signal::SIGKILL)?;
+            kill(*client.pid(), Signal::SIGKILL)?;
         }
 
         Ok(())
     }
 
-    pub fn kill_clients<T: WaylandClient>(&mut self, clients: &[T]) -> anyhow::Result<()> {
+    pub fn kill_clients<T: WaylandClient>(&mut self, clients: &mut [T]) -> anyhow::Result<()> {
         for client in clients {
             self.kill_client(client)?;
         }
 
-        // Remove processes that are dead
-        self.seen.retain(|c, _| Self::is_proc_alive(c.to_owned()));
         Ok(())
     }
 
-    fn kill_client<T: WaylandClient>(&mut self, client: &T) -> anyhow::Result<()> {
-        let pid = client.pid();
-        let status = self.seen.entry(pid).or_insert(KillStatus::Alive);
+    fn kill_client<T: WaylandClient>(&mut self, client: &mut T) -> anyhow::Result<()> {
+        let pid = *client.pid();
+        let status = &mut client.status();
 
         if let Some(action) = status.poll() {
             match action {
@@ -94,56 +84,81 @@ impl ClientKiller {
                 KillAction::Sigterm => kill(pid, Signal::SIGTERM)?,
             }
 
-            *status = status.clone().update();
+            *status = &status.clone().update();
         }
 
         Ok(())
     }
-
-    fn is_proc_alive(pid: Pid) -> bool {
-        match kill(pid, None) {
-            Ok(_) => true,
-            Err(nix::errno::Errno::EPERM) => true, // If we don't have permission to kill, assume proc is still running
-            Err(_) => false,
-        }
-    }
 }
 
 pub trait WaylandClient {
-    fn pid(&self) -> Pid;
+    fn pid(&self) -> &Pid;
     fn app_id(&self) -> &str;
     fn title(&self) -> Option<&str>;
+    fn kind(&self) -> &HyprlandClientKind;
+    fn status(&self) -> &KillStatus;
     /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
     /// signal, so apps have a chance to gracefully exit.
     fn gracefully_close(&self) -> anyhow::Result<()>;
 }
 
 #[derive(Clone)]
-pub enum HyprlandClient {
-    Window(Client),
-    Layer(LayerClient),
+pub enum HyprlandClientKind {
+    Window,
+    Layer,
+}
+
+pub struct HyprlandClient {
+    pid: Pid,
+    kind: HyprlandClientKind,
+    app_id: String,
+    title: Option<String>,
+    status: KillStatus,
+}
+
+impl From<Client> for HyprlandClient {
+    fn from(value: Client) -> Self {
+        Self {
+            pid: Pid::from_raw(value.pid),
+            title: Some(value.title.to_owned()),
+            app_id: value.class.to_owned(),
+            kind: HyprlandClientKind::Window,
+            status: KillStatus::Alive,
+        }
+    }
+}
+
+impl From<LayerClient> for HyprlandClient {
+    fn from(value: LayerClient) -> Self {
+        Self {
+            pid: Pid::from_raw(value.pid),
+            title: None,
+            app_id: value.namespace.to_owned(), // Layer namespace is close enough to an app ID
+            kind: HyprlandClientKind::Layer,    // Layers do not have titles
+            status: KillStatus::Alive,
+        }
+    }
 }
 
 impl WaylandClient for HyprlandClient {
-    fn pid(&self) -> Pid {
-        match self {
-            HyprlandClient::Window(client) => Pid::from_raw(client.pid),
-            HyprlandClient::Layer(layer) => Pid::from_raw(layer.pid),
-        }
+    fn pid(&self) -> &Pid {
+        &self.pid
     }
 
     fn app_id(&self) -> &str {
-        match self {
-            HyprlandClient::Window(client) => &client.class,
-            HyprlandClient::Layer(layer) => &layer.namespace, // Layer namespace is close enough to an app ID
-        }
+        &self.app_id
     }
 
     fn title(&self) -> Option<&str> {
-        match self {
-            HyprlandClient::Window(client) => Some(&client.title),
-            HyprlandClient::Layer(_) => None, // Layers do not have titles
-        }
+        self.title.as_deref()
+    }
+
+    fn kind(&self) -> &HyprlandClientKind {
+        &self.kind
+    }
+
+    fn status(&self) -> &KillStatus {
+        &self.status
     }
 
     fn gracefully_close(&self) -> anyhow::Result<()> {
