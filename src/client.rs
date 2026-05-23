@@ -37,8 +37,8 @@ impl KillStatus {
     }
 
     fn poll(&self) -> Option<KillAction> {
-        const SIGTERM_TIMEOUT: Duration = Duration::from_secs(5);
-        const SIGKILL_TIMEOUT: Duration = Duration::from_secs(15);
+        const SIGTERM_TIMEOUT: Duration = Duration::from_secs(15);
+        const SIGKILL_TIMEOUT: Duration = Duration::from_secs(30);
 
         match self {
             Self::Alive => Some(KillAction::Graceful),
