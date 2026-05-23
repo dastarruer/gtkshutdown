@@ -79,9 +79,16 @@ impl ClientKiller {
 
         if let Some(action) = status.poll() {
             match action {
-                KillAction::Graceful => client.gracefully_close()?,
-                KillAction::Sigkill => kill(pid, Signal::SIGKILL)?,
+                KillAction::Graceful => {
+                    if client.is_layer() {
+                        // Layers do not need to be gracefully closed, and can just be SIGTERMed
+                        kill(pid, Signal::SIGTERM)?;
+                    } else {
+                        client.gracefully_close()?;
+                    }
+                }
                 KillAction::Sigterm => kill(pid, Signal::SIGTERM)?,
+                KillAction::Sigkill => kill(pid, Signal::SIGKILL)?,
             }
 
             *status = &status.clone().update();
