@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 use hyprland::{
     data::{Client, LayerClient},
     dispatch::{Dispatch, DispatchType, WindowIdentifier},
+    error::HyprError,
 };
 use nix::{
     sys::signal::{Signal, kill},
@@ -169,10 +170,26 @@ impl WaylandClient for HyprlandClient {
     }
 
     fn gracefully_close(&self) -> anyhow::Result<()> {
+        let hyprlang_dispatch =
+            DispatchType::CloseWindow(WindowIdentifier::ProcessId(self.pid().as_raw() as u32));
+
+        let lua_args = format!(
+            "hl.dsp.window.close({{ address = \"pid:{}\" }})",
+            self.pid().as_raw()
+        );
+
         // Equivalent of calling `hyprctl dispatch closewindow pid:<PID>`
-        Dispatch::call(DispatchType::CloseWindow(WindowIdentifier::ProcessId(
-            self.pid().as_raw() as u32,
-        )))?;
-        Ok(())
+        match Dispatch::call(hyprlang_dispatch) {
+            Ok(_) => Ok(()),
+            // If this happens, assume that the user is using hyprland lua
+            Err(HyprError::NotOkDispatch(_)) => {
+                // Run hyprctl dispatch manually, since hyprland-rs doesn't support lua as of now
+                std::process::Command::new("hyprctl")
+                    .args(["dispatch", &lua_args])
+                    .output()?;
+                Ok(())
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 }
