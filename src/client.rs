@@ -83,7 +83,7 @@ impl ClientKiller {
 
     fn kill_client<T: WaylandClient>(&mut self, client: &mut T) -> anyhow::Result<()> {
         let pid = *client.pid();
-        let status = &mut client.status();
+        let status = client.status();
 
         let app_id = client.app_id();
         if let Some(action) = status.poll() {
@@ -107,7 +107,7 @@ impl ClientKiller {
                 }
             }
 
-            *status = &status.clone().update();
+            client.update_status();
         }
 
         Ok(())
@@ -123,6 +123,7 @@ pub trait WaylandClient {
     /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
     /// signal, so apps have a chance to gracefully exit.
     fn gracefully_close(&self) -> anyhow::Result<()>;
+    fn update_status(&mut self);
 }
 
 #[derive(Clone, PartialEq)]
@@ -182,6 +183,10 @@ impl WaylandClient for HyprlandClient {
 
     fn status(&self) -> &KillStatus {
         &self.status
+    }
+
+    fn update_status(&mut self) {
+        self.status = self.status.clone().update();
     }
 
     fn gracefully_close(&self) -> anyhow::Result<()> {
