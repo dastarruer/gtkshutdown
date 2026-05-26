@@ -17,7 +17,7 @@ enum KillAction {
     Sigkill,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum KillStatus {
     Alive,
     GracefulSent(Instant),
@@ -132,6 +132,7 @@ enum HyprlandClientKind {
     Layer,
 }
 
+#[derive(PartialEq)]
 pub struct HyprlandClient {
     pid: Pid,
     kind: HyprlandClientKind,
