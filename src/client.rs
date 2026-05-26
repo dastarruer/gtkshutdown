@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    fmt::Display,
+    time::{Duration, Instant},
+};
 
 use anyhow::Context;
 use hyprland::{
@@ -23,6 +26,19 @@ pub enum KillStatus {
     GracefulSent(Instant),
     TermSent(Instant),
     KillSent,
+}
+
+impl Display for KillStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Alive => write!(f, "Alive"),
+            Self::GracefulSent(t) => {
+                write!(f, "GracefulSent ({:.1}s ago)", t.elapsed().as_secs_f32())
+            }
+            Self::TermSent(t) => write!(f, "TermSent ({:.1}s ago)", t.elapsed().as_secs_f32()),
+            Self::KillSent => write!(f, "KillSent"),
+        }
+    }
 }
 
 impl KillStatus {
@@ -67,8 +83,13 @@ impl ClientKiller {
         Ok(())
     }
 
-    pub fn kill_clients<T: WaylandClient>(&mut self, clients: &mut [T]) -> anyhow::Result<()> {
+    pub fn kill_clients<T: WaylandClient + Display>(
+        &mut self,
+        clients: &mut [T],
+    ) -> anyhow::Result<()> {
         for client in clients {
+            log::trace!("Attempting to kill client {client}...");
+
             self.kill_client(client).with_context(|| {
                 format!(
                     "Failed to kill client {} (pid: {})",
@@ -81,7 +102,7 @@ impl ClientKiller {
         Ok(())
     }
 
-    fn kill_client<T: WaylandClient>(&mut self, client: &mut T) -> anyhow::Result<()> {
+    fn kill_client<T: WaylandClient + Display>(&mut self, client: &mut T) -> anyhow::Result<()> {
         let pid = *client.pid();
         let status = client.status();
 
@@ -92,6 +113,8 @@ impl ClientKiller {
                     if client.is_layer() {
                         log::debug!("Client {app_id} is a layer, sending SIGTERM...");
                         kill(pid, Signal::SIGTERM)?;
+
+                        return Ok(());
                     } else {
                         log::debug!("Requesting graceful close to client {app_id}...");
                         client.gracefully_close()?;
@@ -107,7 +130,9 @@ impl ClientKiller {
                 }
             }
 
+            log::trace!("Updating client {client} status...");
             client.update_status();
+            log::trace!("New client status: {}", client.status());
         }
 
         Ok(())
@@ -139,6 +164,16 @@ pub struct HyprlandClient {
     app_id: String,
     title: Option<String>,
     status: KillStatus,
+}
+
+impl Display for HyprlandClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "HyprlandClient {{ app_id: {}, pid: {} }}",
+            self.app_id, self.pid
+        )
+    }
 }
 
 impl PartialOrd for HyprlandClient {

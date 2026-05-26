@@ -96,7 +96,13 @@ impl AppHandler<HyprlandClient> {
 
         self.ui.update(&self.state.borrow());
 
-        Ok(self.is_app_complete())
+        let is_complete = self.is_app_complete();
+        log::trace!(
+            "App is completed: {is_complete}, Number of clients: {}",
+            self.state.borrow().get_num_clients()
+        );
+
+        Ok(is_complete)
     }
 
     fn is_app_complete(&self) -> bool {
@@ -158,7 +164,10 @@ fn main() -> glib::ExitCode {
 
                 glib::ControlFlow::Break
             }
-            false => glib::ControlFlow::Continue,
+            false => {
+                log::debug!("All apps have not been shut down, moving on to the next tick...");
+                glib::ControlFlow::Continue
+            }
         });
     });
 

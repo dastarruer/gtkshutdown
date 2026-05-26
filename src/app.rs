@@ -20,7 +20,12 @@ impl<T: WaylandClient> AppState<T> {
     }
 
     fn prune_dead_clients(&mut self) {
-        self.clients.retain(|c| is_proc_alive(c.pid()));
+        self.clients.retain(|c| {
+            let is_alive = is_proc_alive(c.pid());
+            log::trace!("{} is alive: {is_alive}", c.app_id());
+
+            is_alive
+        });
     }
 }
 
