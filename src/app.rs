@@ -54,6 +54,7 @@ impl AppState<HyprlandClient> {
                 // Filter out gtkshutdown so the app doesn't kill itself
                 c.class != APP_ID
                 &&
+                c.pid > 0 && // Skip negative PIDs to avoid nuking entire session
                 // Avoid overwriting existing clients
                 !self.clients
                         .iter()
@@ -68,10 +69,11 @@ impl AppState<HyprlandClient> {
             .flat_map(|(_, display)| display.iter())
             .flat_map(|(_, layers)| layers.iter())
             .filter(|c| {
-                !self
-                    .clients
-                    .iter()
-                    .any(|existing| existing.pid().as_raw() == c.pid)
+                c.pid > 0
+                    && !self
+                        .clients
+                        .iter()
+                        .any(|existing| existing.pid().as_raw() == c.pid)
             })
             .cloned()
             .map(HyprlandClient::from);
