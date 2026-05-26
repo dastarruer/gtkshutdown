@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use anyhow::Context;
 use hyprland::{
     data::{Client, LayerClient},
     dispatch::{Dispatch, DispatchType, WindowIdentifier},
@@ -68,7 +69,13 @@ impl ClientKiller {
 
     pub fn kill_clients<T: WaylandClient>(&mut self, clients: &mut [T]) -> anyhow::Result<()> {
         for client in clients {
-            self.kill_client(client)?;
+            self.kill_client(client).with_context(|| {
+                format!(
+                    "Failed to kill client {} (pid: {})",
+                    client.app_id(),
+                    client.pid()
+                )
+            })?;
         }
 
         Ok(())
@@ -78,18 +85,26 @@ impl ClientKiller {
         let pid = *client.pid();
         let status = &mut client.status();
 
+        let app_id = client.app_id();
         if let Some(action) = status.poll() {
             match action {
                 KillAction::Graceful => {
                     if client.is_layer() {
-                        // Layers do not need to be gracefully closed, and can just be SIGTERMed
+                        log::debug!("Client {app_id} is a layer, sending SIGTERM...");
                         kill(pid, Signal::SIGTERM)?;
                     } else {
+                        log::debug!("Requesting graceful close to client {app_id}...");
                         client.gracefully_close()?;
                     }
                 }
-                KillAction::Sigterm => kill(pid, Signal::SIGTERM)?,
-                KillAction::Sigkill => kill(pid, Signal::SIGKILL)?,
+                KillAction::Sigterm => {
+                    log::warn!("Sending SIGTERM to client {app_id}...");
+                    kill(pid, Signal::SIGTERM)?
+                }
+                KillAction::Sigkill => {
+                    log::warn!("Sending SIGKILL to client {app_id}...");
+                    kill(pid, Signal::SIGKILL)?;
+                }
             }
 
             *status = &status.clone().update();

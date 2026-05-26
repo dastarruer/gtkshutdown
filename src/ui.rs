@@ -153,19 +153,23 @@ impl UiBuilder {
         let force_quit_btn = Button::builder().label("Force quit anyway").build();
 
         force_quit_btn.connect_clicked(move |_| {
+            log::info!("Force killing all open clients...");
             client_killer
                 .borrow_mut()
                 .force_kill_clients(&state.borrow().clients)
-                .expect("Error while force-killing all apps with SIGKILL");
+                .unwrap_or_else(|e| {
+                    log::error!("Error force-killing all open clients: {e}");
+                    std::process::exit(1);
+                });
         });
 
         let cancel_btn = Button::builder().label("Cancel").build();
 
-        // In other words, close the window if cancel_btn is pressed
         cancel_btn.connect_clicked(glib::clone!(
             #[weak]
             window,
             move |_| {
+                log::info!("Closing window...");
                 window.close();
             }
         ));

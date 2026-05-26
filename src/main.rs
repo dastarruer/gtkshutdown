@@ -3,12 +3,14 @@ mod client;
 mod ui;
 
 use std::cell::RefCell;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 use anyhow::Context;
 use app::AppState;
 use clap::Parser;
 use client::{ClientKiller, HyprlandClient, WaylandClient};
+use flexi_logger::{FileSpec, Logger};
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;
@@ -78,16 +80,18 @@ impl AppHandler<HyprlandClient> {
     /// - `true` if all clients have been closed.
     /// - `false` if clients are still open.
     fn tick(&mut self) -> anyhow::Result<bool> {
+        log::info!("Refreshing client list...");
         self.state
             .borrow_mut()
             .refresh()
             .context("Failed to get clients from Hyprland")?;
 
         if !self.args.dry_run {
+            log::info!("The killing begins! Killing open clients...");
             self.client_killer
                 .borrow_mut()
                 .kill_clients(&mut self.state.borrow_mut().clients)
-                .context("Failed to kill process.")?;
+                .context("Failed to kill process")?;
         }
 
         self.ui.update(&self.state.borrow());
@@ -101,23 +105,56 @@ impl AppHandler<HyprlandClient> {
 }
 
 fn main() -> glib::ExitCode {
+    let log_dir = std::env::var("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            let home = std::env::var("HOME").expect("HOME is not set");
+            PathBuf::from(home).join(".local/state")
+        })
+        .join("gtkshutdown");
+
+    let _logger = Logger::try_with_env()
+        .expect("Value of RUST_LOG is malformed")
+        .log_to_file(
+            FileSpec::default()
+                .directory(log_dir)
+                .basename("gtkshutdown"),
+        )
+        .rotate(
+            flexi_logger::Criterion::Size(1000000),
+            flexi_logger::Naming::Numbers,
+            flexi_logger::Cleanup::KeepLogFiles(5),
+        )
+        .start()
+        .expect("Logger failed to start");
+
     let args = Args::parse();
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(move |app| {
-        let mut handler = AppHandler::new(app, args.clone()).expect("Unable to start app");
+        let mut handler = AppHandler::new(app, args.clone()).unwrap_or_else(|e| {
+            log::error!("Error starting app: {e}");
+            std::process::exit(1);
+        });
+
         handler.ui.window.present();
+        log::debug!("Window created!");
 
         glib::timeout_add_local(std::time::Duration::from_millis(150), move || match handler
             .tick()
-            .expect("Error while running app tick")
-        {
+            .unwrap_or_else(|e| {
+                log::error!("Error running app tick: {e}");
+                std::process::exit(1);
+            }) {
             true => {
+                log::info!("All apps have been shut down, closing...");
                 handler.ui.window.close();
-                handler
-                    .args
-                    .execute_post_cmd()
-                    .expect("Error while executing --post-cmd");
+
+                log::info!("Executing --post-cmd...");
+                handler.args.execute_post_cmd().unwrap_or_else(|e| {
+                    log::error!("Error executing --post-cmd: {e}");
+                    std::process::exit(1);
+                });
 
                 glib::ControlFlow::Break
             }
