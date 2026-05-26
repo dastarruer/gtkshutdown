@@ -64,3 +64,17 @@ gtkshutdown --post-cmd "shutdown -P 0"
 # Reboot system
 gtkshutdown --post-cmd "reboot"
 ```
+
+## Troubleshooting
+
+To run `gtkshutdown` with logs enabled, run:
+
+```sh
+RUST_LOG=debug gtkshutdown [OPTIONS]
+```
+
+Logs are written to `$XDG_STATE_HOME/gtkshutdown` by default. If `$XDG_STATE_HOME`
+is not set, then `gtkshutdown` falls back to `$HOME/.local/state/gtkshutdown`.
+
+Append the output of `cat ~/.local/state/gtkshutdown/gtkshutdown_rCURRENT.log`
+to any issues you create to help me figure out what went wrong.
