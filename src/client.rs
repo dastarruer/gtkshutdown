@@ -17,7 +17,7 @@ enum KillAction {
     Sigkill,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq, PartialOrd)]
 pub enum KillStatus {
     Alive,
     GracefulSent(Instant),
@@ -126,19 +126,33 @@ pub trait WaylandClient {
     fn update_status(&mut self);
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq, PartialOrd)]
 enum HyprlandClientKind {
     Window,
     Layer,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub struct HyprlandClient {
     pid: Pid,
     kind: HyprlandClientKind,
     app_id: String,
     title: Option<String>,
     status: KillStatus,
+}
+
+impl PartialOrd for HyprlandClient {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for HyprlandClient {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.is_layer()
+            .cmp(&other.is_layer()) // Sort non-layer clients lower
+            .then_with(|| self.app_id().cmp(other.app_id())) // Sort clients by app_id
+    }
 }
 
 impl From<Client> for HyprlandClient {
