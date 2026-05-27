@@ -126,6 +126,7 @@ fn main() -> glib::ExitCode {
                 .directory(log_dir)
                 .basename("gtkshutdown"),
         )
+        .duplicate_to_stdout(flexi_logger::Duplicate::Trace)
         .rotate(
             flexi_logger::Criterion::Size(1000000),
             flexi_logger::Naming::Numbers,

@@ -244,7 +244,7 @@ impl WaylandClient for HyprlandClient {
             DispatchType::CloseWindow(WindowIdentifier::ProcessId(self.pid().as_raw() as u32));
 
         let lua_args = format!(
-            "hl.dsp.window.close({{ address = \"pid:{}\" }})",
+            r#"hl.dsp.window.close({{ window = "pid:{}" }})"#,
             self.pid().as_raw()
         );
 
@@ -253,10 +253,28 @@ impl WaylandClient for HyprlandClient {
             Ok(_) => Ok(()),
             // If this happens, assume that the user is using hyprland lua
             Err(HyprError::NotOkDispatch(_)) => {
+                log::debug!("Running: hyprctl dispatch {lua_args}");
+
                 // Run hyprctl dispatch manually, since hyprland-rs doesn't support lua as of now
-                std::process::Command::new("hyprctl")
+                let output = std::process::Command::new("hyprctl")
                     .args(["dispatch", &lua_args])
                     .output()?;
+
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let stdout = String::from_utf8_lossy(&output.stdout);
+
+                if !output.status.success() {
+                    log::error!(
+                        "hyprctl dispatch failed (status {}): stdout={stdout} stderr={stderr}",
+                        output.status
+                    );
+                } else {
+                    log::debug!(
+                        "hyprctl dispatch succeeded (status {}): stdout={stdout} stderr={stderr}",
+                        output.status
+                    );
+                }
+
                 Ok(())
             }
             Err(e) => Err(e.into()),
