@@ -116,14 +116,32 @@ impl UiBuilder {
 
             let row_box = Box::new(Orientation::Vertical, 8);
 
+            let is_saving = client.may_be_saving();
+            let is_hanging = client.may_be_hanging();
+
+            let app_id = if is_saving {
+                format!("* {}", client.app_id())
+            } else if is_hanging {
+                format!("** {}", client.app_id())
+            } else {
+                client.app_id().to_string()
+            };
+
+            let title = if is_saving {
+                "App has not closed yet, there may be unsaved progress."
+            } else if is_hanging {
+                "App has not been killed yet, it may be hanging."
+            } else {
+                client.title().unwrap_or("")
+            };
+
             let app_id_label = Label::builder()
                 .halign(Align::Start)
                 .css_classes(["app-id"])
-                .label(client.app_id())
+                .label(app_id)
                 .build();
             row_box.append(&app_id_label);
 
-            let title = client.title().unwrap_or("");
             let title_label = Label::builder()
                 .halign(Align::Start)
                 .css_classes(["app-title"])

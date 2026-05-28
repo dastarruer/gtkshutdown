@@ -145,10 +145,25 @@ pub trait WaylandClient {
     fn title(&self) -> Option<&str>;
     fn is_layer(&self) -> bool;
     fn status(&self) -> &KillStatus;
+
     /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
     /// signal, so apps have a chance to gracefully exit.
     fn gracefully_close(&self) -> anyhow::Result<()>;
     fn update_status(&mut self);
+
+    /// Check if the client is asking the user to save their work. Note that
+    /// there is no reliable way to detect save dialogs on Linux, so this is
+    /// based on if the client is still open even after requesting it to
+    /// gracefully exit.
+    fn may_be_saving(&self) -> bool {
+        matches!(self.status(), KillStatus::GracefulSent(instant) if instant.elapsed() > Duration::from_secs(5))
+    }
+
+    /// Check if the client is hanging if after sending a SIGTERM signal, the
+    /// client still hasn't died.
+    fn may_be_hanging(&self) -> bool {
+        matches!(self.status(), KillStatus::TermSent(instant) if instant.elapsed() > Duration::from_secs(3))
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd)]
