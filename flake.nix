@@ -65,7 +65,7 @@
       meta = with pkgs.lib; {
         description = "A smooth application closer utility for Hyprland/Wayland ecosystems";
         homepage = "https://github.com/dastarruer/gtkshutdown";
-        license = licenses.mit;
+        license = licenses.bsd3;
         mainProgram = "gtkshutdown";
         platforms = platforms.linux;
       };
