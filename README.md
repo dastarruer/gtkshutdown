@@ -7,6 +7,18 @@ window managers.
 
 ![Screenshot of gtkshutdown](./docs/preview.jpg)
 
+## Why use this?
+
+You may wonder how this differs from just running `systemctl poweroff` in the
+terminal. It's important to note that `gtkshutdown` **does not** shut down the
+system.
+
+Normally, on shutdown, Linux sends a `SIGTERM` signal to gracefully shut down
+all running processes. However, this approach can lead to losing unsaved work
+and data corruption. `gtkshutdown` will instead gracefully close all running apps
+via the compositor's IPC, which gives the user a chance to save their work, and
+also leads to less data corruption.
+
 ## Installation
 
 ### Nix
