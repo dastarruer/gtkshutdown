@@ -41,108 +41,12 @@
       rustc = rust-toolchain;
     };
 
-    gtkshutdown = rustPlatform.buildRustPackage {
-      pname = "gtkshutdown";
-      version = "0.1.0";
-      src = ./.;
+    gtkshutdown = pkgs.callPackage ./nix {inherit rustPlatform;};
 
-      cargoLock = {
-        lockFile = ./Cargo.lock;
-        outputHashes = {
-          "hyprland-0.4.0-beta.3" = "sha256-8rOAx9Hndezc7zQzIs/Z0GT77iDslKmAU9tzfOusH74=";
-        };
-      };
-
-      nativeBuildInputs = with pkgs; [
-        pkg-config
-        wrapGAppsHook4
-      ];
-
-      buildInputs = with pkgs; [
-        gtk4
-      ];
-
-      meta = with pkgs.lib; {
-        description = "A smooth application closer utility for Hyprland/Wayland ecosystems";
-        homepage = "https://github.com/dastarruer/gtkshutdown";
-        license = licenses.bsd3;
-        mainProgram = "gtkshutdown";
-        platforms = platforms.linux;
-      };
-    };
-
-    pre-commit-check = inputs.git-hooks.lib.${system}.run {
-      src = ./.;
-
-      # GIT HOOKS GO HERE
-      # See https://devenv.sh/git-hooks/ for how to configure hooks
-      # To get the root of the project, use the following command as a workaround: $(git rev-parse --show-toplevel)
-      # See https://github.com/NixOS/nix/issues/8034#issuecomment-3366842508 for more info
-      hooks = {
-        alejandra.enable = true;
-
-        clippy = {
-          enable = true;
-
-          packageOverrides = {
-            cargo = rust-toolchain;
-            clippy = rust-toolchain;
-          };
-
-          settings = {
-            allFeatures = true;
-            denyWarnings = true;
-          };
-        };
-
-        rustfmt = {
-          enable = true;
-
-          packageOverrides = {
-            cargo = rust-toolchain;
-            rustfmt = rust-toolchain;
-          };
-
-          settings.check = true;
-        };
-
-        check-toml.enable = true;
-        taplo.enable = true;
-
-        prettier = {
-          enable = true;
-          settings.configPath = ".prettierrc";
-        };
-        markdownlint.enable = true;
-      };
-    };
+    pre-commit-check = (import ./nix/dev/pre-commit.nix) {inherit inputs system rust-toolchain;};
+    devshell = (import ./nix/dev/devshell.nix) {inherit pkgs rust-toolchain pre-commit-check;};
   in {
-    packages.${system} = {
-      default = gtkshutdown;
-      gtkshutdown = gtkshutdown;
-    };
-
-    devShells.${system}.default = pkgs.mkShell {
-      nativeBuildInputs = with pkgs; [
-        # MARKDOWN
-        markdownlint-cli # Linter
-        prettier
-
-        # NIX
-        nixd # LSP
-        alejandra # Formatter
-
-        # RUST
-        rust-toolchain
-        rust-analyzer-nightly
-        pkg-config
-        gtk4
-      ];
-
-      shellHook = ''
-        # Install pre-commit hooks
-        ${pre-commit-check.shellHook}
-      '';
-    };
+    packages.${system}.default = gtkshutdown;
+    devShells.${system}.default = devshell;
   };
 }
