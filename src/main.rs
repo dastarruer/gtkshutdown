@@ -90,8 +90,7 @@ impl AppHandler<HyprlandClient> {
             log::info!("The killing begins! Killing open clients...");
             self.client_killer
                 .borrow_mut()
-                .kill_clients(&mut self.state.borrow_mut().clients)
-                .context("Failed to kill process")?;
+                .kill_clients(&mut self.state.borrow_mut().clients)?;
         }
 
         self.ui.update(&self.state.borrow());
