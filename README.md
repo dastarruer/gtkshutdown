@@ -90,3 +90,15 @@ is not set, then `gtkshutdown` falls back to `$HOME/.local/state/gtkshutdown`.
 
 Append the output of `cat ~/.local/state/gtkshutdown/gtkshutdown_rCURRENT.log`
 to any issues you create to help me figure out what went wrong.
+
+## Development
+
+To run the Hyprland VM for testing:
+
+```sh
+nix run .#hyprland
+```
+
+To test the app inside the VM, open kitty with ``SUPER + ` ``, run
+`open_apps`, and finally, run `gtkshutdown & disown`. The logs of the most
+recent run are stored at `~/.local/state/gtkshutdown/gtkshutdown_rCURRENT.log`.
