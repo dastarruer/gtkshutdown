@@ -2,7 +2,7 @@
   pkgs,
   rustPlatform,
 }:
-rustPlatform.buildRustPackage {
+rustPlatform.buildRustPackage rec {
   pname = "gtkshutdown";
   version = "0.1.0";
   src = ../.;
@@ -16,12 +16,21 @@ rustPlatform.buildRustPackage {
 
   nativeBuildInputs = with pkgs; [
     pkg-config
+    glib
     wrapGAppsHook4
   ];
 
   buildInputs = with pkgs; [
     gtk4
+    pango
+    glib
   ];
+
+  # A janky workaround to get gtkshutdown to recognize build inputs
+  postFixup = ''
+    wrapProgram $out/bin/gtkshutdown \
+      --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath buildInputs}"
+  '';
 
   meta = with pkgs.lib; {
     description = "A smooth application closer utility for Hyprland/Wayland ecosystems";
