@@ -15,7 +15,6 @@ pkgs.mkShell {
 
     # RUST
     rust-toolchain
-    rust-analyzer-nightly
     pkg-config
     gtk4
   ];

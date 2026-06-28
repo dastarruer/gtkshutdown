@@ -33,7 +33,7 @@
 
     rust-toolchain = pkgs.fenix.fromToolchainFile {
       file = ./rust-toolchain.toml;
-      sha256 = "sha256-Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
+      sha256 = "sha256-mvUGEOHYJpn3ikC5hckneuGixaC+yGrkMM/liDIDgoU=";
     };
 
     rustPlatform = pkgs.makeRustPlatform {
