@@ -33,7 +33,7 @@ rustPlatform.buildRustPackage rec {
   '';
 
   meta = with pkgs.lib; {
-    description = "A smooth application closer utility for Hyprland/Wayland ecosystems";
+    description = "A graceful shutdown utility for Wayland window managers/compositors.";
     homepage = "https://github.com/dastarruer/gtkshutdown";
     license = licenses.bsd3;
     mainProgram = "gtkshutdown";
