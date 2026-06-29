@@ -93,11 +93,18 @@ to any issues you create to help me figure out what went wrong.
 
 ## Development
 
-To run the Hyprland VM for testing:
+To run any VM for testing:
 
 ```sh
 nix run .#hyprland
 ```
+
+The following VMs are currently available:
+
+- `.#hyprland`
+- `.#hyprland-lua`
+
+### Testing the app
 
 To test the app inside the VM, open kitty with ``SUPER + ` ``, run
 `open_apps`, and finally, run `gtkshutdown & disown`. The logs of the most
