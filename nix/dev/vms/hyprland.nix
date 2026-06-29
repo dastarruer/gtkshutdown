@@ -15,8 +15,6 @@
   ];
 
   home-manager.sharedModules = lib.singleton {
-    programs.kitty.enable = true;
-
     wayland.windowManager.hyprland = {
       enable = true;
       systemd.enable = true;

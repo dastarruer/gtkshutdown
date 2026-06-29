@@ -50,6 +50,8 @@ in {
     config.system.nixos.release;
 
   home-manager.sharedModules = lib.singleton {
+    programs.kitty.enable = true;
+
     # Enable Bash to ensure environment variables are set.
     programs.bash.enable = true;
   };

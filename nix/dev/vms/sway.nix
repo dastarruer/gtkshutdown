@@ -15,8 +15,6 @@
   ];
 
   home-manager.sharedModules = lib.singleton {
-    programs.kitty.enable = true;
-
     wayland.windowManager.sway = {
       enable = true;
       config = {
