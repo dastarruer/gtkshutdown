@@ -52,14 +52,20 @@
 
     pre-commit-check = (import ./nix/dev/pre-commit.nix) {inherit inputs system rust-toolchain;};
     devshell = (import ./nix/dev/devshell.nix) {inherit pkgs rust-toolchain pre-commit-check;};
-  in {
-    nixosConfigurations = {
-      hyprland = nixpkgs.lib.nixosSystem {
+
+    mkVm = name:
+      nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = {inherit gtkshutdown;};
 
-        modules = [inputs.home-manager.nixosModules.home-manager ./nix/dev/vms/hyprland.nix];
+        modules = [
+          inputs.home-manager.nixosModules.home-manager
+          ./nix/dev/vms/${name}.nix
+        ];
       };
+  in {
+    nixosConfigurations = {
+      hyprland = mkVm "hyprland";
     };
 
     apps.${system} = let
