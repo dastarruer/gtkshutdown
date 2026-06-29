@@ -67,6 +67,7 @@
     nixosConfigurations = {
       hyprland = mkVm "hyprland";
       hyprland-lua = mkVm "hyprland-lua";
+      sway = mkVm "sway";
     };
 
     apps.${system} = let

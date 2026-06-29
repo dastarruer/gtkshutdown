@@ -103,6 +103,7 @@ The following VMs are currently available:
 
 - `.#hyprland`
 - `.#hyprland-lua`
+- `.#sway`
 
 ### Testing the app
 
