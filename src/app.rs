@@ -6,7 +6,7 @@ use nix::{sys::signal::kill, unistd::Pid};
 
 use crate::{
     APP_ID,
-    client::{HyprlandClient, WaylandClient},
+    client_killer::{WaylandClient, hyprland::HyprlandClient},
 };
 
 #[derive(Clone)]
