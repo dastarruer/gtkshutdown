@@ -34,8 +34,6 @@ inputs.git-hooks.lib.${system}.run {
         cargo = rust-toolchain;
         rustfmt = rust-toolchain;
       };
-
-      settings.check = true;
     };
 
     check-toml.enable = true;
