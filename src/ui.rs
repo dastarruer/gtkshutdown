@@ -7,7 +7,7 @@ use gtk4::{
 use gtk4::{ListBox, prelude::*};
 
 use crate::app::AppState;
-use crate::client::{ClientKiller, WaylandClient};
+use crate::client_killer::{ClientKiller, WaylandClient};
 
 pub struct UiBuilder {
     pub window: ApplicationWindow,
