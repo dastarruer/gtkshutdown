@@ -3,21 +3,33 @@
   rust-toolchain,
   pre-commit-check,
 }:
-pkgs.mkShell {
-  nativeBuildInputs = with pkgs; [
+pkgs.mkShell rec {
+  packages = with pkgs; [
     # MARKDOWN
-    markdownlint-cli # Linter
+    markdownlint-cli
     prettier
 
     # NIX
-    nixd # LSP
-    alejandra # Formatter
+    nixd
+    alejandra
 
     # RUST
     rust-toolchain
-    pkg-config
-    gtk4
   ];
+
+  nativeBuildInputs = with pkgs; [
+    pkg-config
+    glib
+    wrapGAppsHook4
+  ];
+
+  buildInputs = with pkgs; [
+    gtk4
+    pango
+    glib
+  ];
+
+  env.LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
 
   shellHook = ''
     # Install pre-commit hooks
