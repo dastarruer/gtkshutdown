@@ -3,21 +3,19 @@ mod client_killer;
 mod ui;
 
 use std::cell::RefCell;
-use std::env;
-use std::fmt::Display;
 use std::path::PathBuf;
 use std::rc::Rc;
 
 use anyhow::Context;
 use app::AppState;
 use clap::Parser;
-use client_killer::{ClientKiller, WaylandClient};
+use client_killer::ClientKiller;
 use flexi_logger::{FileSpec, Logger};
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;
 
-use crate::client_killer::hyprland::HyprlandClient;
+use crate::client_killer::{WaylandBackend, detect_backend};
 
 pub const APP_ID: &str = "io.github.dastarruer.gtkshutdown";
 
@@ -54,18 +52,22 @@ impl Args {
     }
 }
 
-struct AppHandler<T: WaylandClient> {
+struct AppHandler {
     args: Args,
-    state: Rc<RefCell<AppState<T>>>,
+    state: Rc<RefCell<AppState>>,
     ui: UiBuilder,
     client_killer: Rc<RefCell<ClientKiller>>,
 }
 
-impl<T: WaylandClient + Display + 'static> AppHandler<T> {
-    fn new(app: &Application, args: Args) -> anyhow::Result<Self> {
+impl AppHandler {
+    fn new(
+        app: &Application,
+        args: Args,
+        backend: Box<dyn WaylandBackend>,
+    ) -> anyhow::Result<Self> {
         let client_killer = Rc::new(RefCell::new(ClientKiller::new()));
         let state = Rc::new(RefCell::new(
-            AppState::new().context("Failed to get clients from Hyprland.")?,
+            AppState::new(backend).context("Failed to get clients from Hyprland.")?,
         ));
         let ui = UiBuilder::new(app, Rc::clone(&state), Rc::clone(&client_killer));
 
@@ -92,9 +94,10 @@ impl<T: WaylandClient + Display + 'static> AppHandler<T> {
 
         if !self.args.dry_run {
             log::info!("The killing begins! Killing open clients...");
-            self.client_killer
-                .borrow_mut()
-                .kill_clients(&mut self.state.borrow_mut().clients)?;
+            self.client_killer.borrow_mut().kill_clients(
+                &*self.state.borrow().backend, // Such beautiful syntax just to get a ref to the inside of the Box
+                &mut self.state.borrow_mut().clients,
+            )?;
         }
 
         self.ui.update(&self.state.borrow());
@@ -114,8 +117,6 @@ impl<T: WaylandClient + Display + 'static> AppHandler<T> {
 }
 
 fn main() -> glib::ExitCode {
-    let compositor = Compositor::detect_compositor().expect("XDG_CURRENT_DESKTOP should be set.");
-
     let log_dir = std::env::var("XDG_STATE_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|_| {
@@ -144,11 +145,9 @@ fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(move |app| {
-        let mut handler = match compositor {
-            Compositor::Hyprland => AppHandler::<HyprlandClient>::new(app, args.clone()),
-            Compositor::Sway => todo!(),
-        }
-        .unwrap_or_else(|e| {
+        let backend = detect_backend().expect("XDG_CURRENT_DESKTOP should be set.");
+
+        let mut handler = AppHandler::new(app, args.clone(), backend).unwrap_or_else(|e| {
             log::error!("Error starting app: {e}");
             std::process::exit(1);
         });
@@ -183,27 +182,4 @@ fn main() -> glib::ExitCode {
 
     // Overwrite gtk cli args to use our own
     app.run_with_args::<&str>(&[])
-}
-
-enum Compositor {
-    Hyprland,
-    Sway,
-}
-
-impl Compositor {
-    /// Detect the compositor currently being used with XDG_CURRENT_DESKTOP.
-    fn detect_compositor() -> Option<Self> {
-        const HYPRLAND_STRING: &str = "Hyprland";
-        const SWAY_STRING: &str = "sway";
-
-        if let Ok(current_desktop) = &env::var("XDG_CURRENT_DESKTOP") {
-            match current_desktop.as_str() {
-                HYPRLAND_STRING => return Some(Self::Hyprland),
-                SWAY_STRING => return Some(Self::Sway),
-                _ => return None,
-            }
-        }
-
-        None
-    }
 }
