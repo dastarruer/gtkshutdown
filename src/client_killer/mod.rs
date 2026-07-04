@@ -1,4 +1,5 @@
 pub mod hyprland;
+pub mod sway;
 
 use std::{
     fmt::Display,
