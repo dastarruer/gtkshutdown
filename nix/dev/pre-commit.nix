@@ -1,7 +1,7 @@
 {
   inputs,
   system,
-  rust-toolchain,
+  toolchain,
 }:
 inputs.git-hooks.lib.${system}.run {
   src = ./.;
@@ -17,8 +17,8 @@ inputs.git-hooks.lib.${system}.run {
       enable = true;
 
       packageOverrides = {
-        cargo = rust-toolchain;
-        clippy = rust-toolchain;
+        cargo = toolchain;
+        clippy = toolchain;
       };
 
       settings = {
@@ -31,8 +31,8 @@ inputs.git-hooks.lib.${system}.run {
       enable = true;
 
       packageOverrides = {
-        cargo = rust-toolchain;
-        rustfmt = rust-toolchain;
+        cargo = toolchain;
+        rustfmt = toolchain;
       };
     };
 

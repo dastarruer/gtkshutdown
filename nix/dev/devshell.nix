@@ -1,6 +1,6 @@
 {
   pkgs,
-  rust-toolchain,
+  toolchain,
   pre-commit-check,
 }:
 pkgs.mkShell rec {
@@ -14,7 +14,7 @@ pkgs.mkShell rec {
     alejandra
 
     # RUST
-    rust-toolchain
+    toolchain
   ];
 
   nativeBuildInputs = with pkgs; [

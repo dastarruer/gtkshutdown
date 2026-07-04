@@ -1,42 +1,61 @@
 {
+  inputs,
   pkgs,
-  rustPlatform,
-}:
-rustPlatform.buildRustPackage rec {
-  pname = "gtkshutdown";
-  version = "0.1.0";
-  src = ../.;
+  toolchain,
+}: let
+  craneLib = (inputs.crane.mkLib inputs.nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system})
+    .overrideToolchain toolchain;
 
-  cargoLock = {
-    lockFile = ../Cargo.lock;
-    outputHashes = {
-      "hyprland-0.4.0-beta.3" = "sha256-8rOAx9Hndezc7zQzIs/Z0GT77iDslKmAU9tzfOusH74=";
-    };
+  src = pkgs.lib.cleanSourceWith {
+    src = ../.;
+    filter = path: type: let
+      name = baseNameOf path;
+    in
+      craneLib.filterCargoSources path type
+      || name == "style.css"; # Keep style.css; filter out all other unnecessary files
+    name = "source";
   };
 
-  nativeBuildInputs = with pkgs; [
-    pkg-config
-    glib
-    wrapGAppsHook4
-  ];
+  commonArgs = {
+    nativeBuildInputs = [
+      pkgs.pkg-config
+    ];
 
-  buildInputs = with pkgs; [
-    gtk4
-    pango
-    glib
-  ];
-
-  # A janky workaround to get gtkshutdown to recognize build inputs
-  postFixup = ''
-    wrapProgram $out/bin/gtkshutdown \
-      --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath buildInputs}"
-  '';
-
-  meta = with pkgs.lib; {
-    description = "A graceful shutdown utility for Wayland window managers/compositors.";
-    homepage = "https://github.com/dastarruer/gtkshutdown";
-    license = licenses.bsd3;
-    mainProgram = "gtkshutdown";
-    platforms = platforms.linux;
+    buildInputs = with pkgs; [
+      gtk4
+      glib
+      pango
+    ];
   };
-}
+
+  cargoArtifacts = craneLib.buildDepsOnly (commonArgs
+    // {
+      inherit src;
+    });
+in
+  craneLib.buildPackage (commonArgs
+    // {
+      inherit src cargoArtifacts;
+
+      nativeBuildInputs =
+        commonArgs.nativeBuildInputs
+        ++ [
+          pkgs.wrapGAppsHook4
+        ];
+
+      cargoExtraArgs = "-p gtkshutdown";
+
+      postInstall = ''
+        if [ -f "$out/bin/gtkshutdown" ]; then
+          wrapGApp $out/bin/gtkshutdown
+        fi
+      '';
+
+      meta = with pkgs.lib; {
+        description = "A graceful shutdown utility for Wayland window managers/compositors.";
+        homepage = "https://github.com/dastarruer/gtkshutdown";
+        license = licenses.bsd3;
+        mainProgram = "gtkshutdown";
+        platforms = platforms.linux;
+      };
+    })

@@ -13,6 +13,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     fenix.url = "github:nix-community/fenix";
+    crane.url = "github:ipetkov/crane";
 
     git-hooks = {
       url = "github:cachix/git-hooks.nix";
@@ -38,20 +39,15 @@
     };
     lib = pkgs.lib;
 
-    rust-toolchain = pkgs.fenix.fromToolchainFile {
+    toolchain = pkgs.fenix.fromToolchainFile {
       file = ./rust-toolchain.toml;
       sha256 = "sha256-h+t2xTBz5yt2YIO+1VMIIGlCU7gyp2LYOFvaV1nwOXU=";
     };
 
-    rustPlatform = pkgs.makeRustPlatform {
-      cargo = rust-toolchain;
-      rustc = rust-toolchain;
-    };
+    gtkshutdown = pkgs.callPackage ./nix {inherit inputs toolchain;};
 
-    gtkshutdown = pkgs.callPackage ./nix {inherit rustPlatform;};
-
-    pre-commit-check = (import ./nix/dev/pre-commit.nix) {inherit inputs system rust-toolchain;};
-    devshell = (import ./nix/dev/devshell.nix) {inherit pkgs rust-toolchain pre-commit-check;};
+    pre-commit-check = (import ./nix/dev/pre-commit.nix) {inherit inputs system toolchain;};
+    devshell = (import ./nix/dev/devshell.nix) {inherit pkgs toolchain pre-commit-check;};
 
     mkVm = name:
       nixpkgs.lib.nixosSystem {
