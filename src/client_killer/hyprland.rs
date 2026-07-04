@@ -1,13 +1,17 @@
 use std::fmt::Display;
 
 use hyprland::{
-    data::{Client, LayerClient},
+    data::{Client, Clients, LayerClient, Layers},
     dispatch::{Dispatch, DispatchType, WindowIdentifier},
     error::HyprError,
+    shared::HyprData,
 };
 use nix::unistd::Pid;
 
-use crate::client_killer::{KillStatus, WaylandClient};
+use crate::{
+    APP_ID,
+    client_killer::{KillStatus, WaylandClient},
+};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd)]
 enum HyprlandClientKind {
@@ -95,6 +99,44 @@ impl WaylandClient for HyprlandClient {
 
     fn update_status(&mut self) {
         self.status = self.status.clone().update();
+    }
+
+    fn get_open_clients(existing_clients: &[Self]) -> anyhow::Result<Vec<Self>> {
+        let windows = Clients::get()?;
+        let windows = windows
+            .iter()
+            .filter(|c| {
+                // Filter out gtkshutdown so the app doesn't kill itself
+                c.class != APP_ID
+                &&
+                c.pid > 0 && // Skip negative PIDs to avoid nuking entire session
+                // Avoid overwriting existing clients
+                !existing_clients
+                        .iter()
+                        .any(|existing| existing.pid().as_raw() == c.pid)
+            })
+            .cloned()
+            .map(HyprlandClient::from);
+
+        let layers = Layers::get()?;
+        let layers = layers
+            .iter()
+            .flat_map(|(_, display)| display.iter())
+            .flat_map(|(_, layers)| layers.iter())
+            .filter(|c| {
+                c.pid > 0
+                    && !existing_clients
+                        .iter()
+                        .any(|existing| existing.pid().as_raw() == c.pid)
+            })
+            .cloned()
+            .map(HyprlandClient::from);
+
+        let mut clients = windows.chain(layers).collect::<Vec<HyprlandClient>>();
+        clients.sort();
+        clients.dedup();
+
+        Ok(clients)
     }
 
     fn gracefully_close(&self) -> anyhow::Result<()> {

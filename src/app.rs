@@ -1,13 +1,6 @@
-use hyprland::{
-    data::{Clients, Layers},
-    shared::HyprData,
-};
 use nix::{sys::signal::kill, unistd::Pid};
 
-use crate::{
-    APP_ID,
-    client_killer::{WaylandClient, hyprland::HyprlandClient},
-};
+use crate::client_killer::WaylandClient;
 
 #[derive(Clone)]
 pub struct AppState<T: WaylandClient> {
@@ -15,8 +8,22 @@ pub struct AppState<T: WaylandClient> {
 }
 
 impl<T: WaylandClient> AppState<T> {
+    pub fn new() -> anyhow::Result<Self> {
+        let clients = Vec::new();
+        let clients = T::get_open_clients(&clients)?;
+
+        Ok(Self { clients })
+    }
+
     pub fn get_num_clients(&self) -> usize {
         self.clients.len()
+    }
+
+    pub fn refresh(&mut self) -> anyhow::Result<()> {
+        self.prune_dead_clients();
+        self.clients.extend(T::get_open_clients(&self.clients)?);
+
+        Ok(())
     }
 
     fn prune_dead_clients(&mut self) {
@@ -26,63 +33,6 @@ impl<T: WaylandClient> AppState<T> {
 
             is_alive
         });
-    }
-}
-
-impl AppState<HyprlandClient> {
-    pub fn new() -> hyprland::Result<Self> {
-        let clients = Vec::new();
-        let app = Self { clients };
-
-        let clients = app.get_open_clients()?;
-
-        Ok(Self { clients })
-    }
-
-    pub fn refresh(&mut self) -> hyprland::Result<()> {
-        self.prune_dead_clients();
-        self.clients.extend(self.get_open_clients()?);
-
-        Ok(())
-    }
-
-    fn get_open_clients(&self) -> hyprland::Result<Vec<HyprlandClient>> {
-        let windows = Clients::get()?;
-        let windows = windows
-            .iter()
-            .filter(|c| {
-                // Filter out gtkshutdown so the app doesn't kill itself
-                c.class != APP_ID
-                &&
-                c.pid > 0 && // Skip negative PIDs to avoid nuking entire session
-                // Avoid overwriting existing clients
-                !self.clients
-                        .iter()
-                        .any(|existing| existing.pid().as_raw() == c.pid)
-            })
-            .cloned()
-            .map(HyprlandClient::from);
-
-        let layers = Layers::get()?;
-        let layers = layers
-            .iter()
-            .flat_map(|(_, display)| display.iter())
-            .flat_map(|(_, layers)| layers.iter())
-            .filter(|c| {
-                c.pid > 0
-                    && !self
-                        .clients
-                        .iter()
-                        .any(|existing| existing.pid().as_raw() == c.pid)
-            })
-            .cloned()
-            .map(HyprlandClient::from);
-
-        let mut clients = windows.chain(layers).collect::<Vec<HyprlandClient>>();
-        clients.sort();
-        clients.dedup();
-
-        Ok(clients)
     }
 }
 

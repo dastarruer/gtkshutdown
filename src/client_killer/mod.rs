@@ -137,12 +137,13 @@ impl ClientKiller {
     }
 }
 
-pub trait WaylandClient {
+pub trait WaylandClient: Sized {
     fn pid(&self) -> &Pid;
     fn app_id(&self) -> &str;
     fn title(&self) -> Option<&str>;
     fn is_layer(&self) -> bool;
     fn status(&self) -> &KillStatus;
+    fn get_open_clients(existing_clients: &[Self]) -> anyhow::Result<Vec<Self>>;
 
     /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
     /// signal, so apps have a chance to gracefully exit.
