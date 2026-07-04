@@ -4,6 +4,7 @@ mod ui;
 
 use std::cell::RefCell;
 use std::env;
+use std::fmt::Display;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -60,7 +61,7 @@ struct AppHandler<T: WaylandClient> {
     client_killer: Rc<RefCell<ClientKiller>>,
 }
 
-impl AppHandler<HyprlandClient> {
+impl<T: WaylandClient + Display + 'static> AppHandler<T> {
     fn new(app: &Application, args: Args) -> anyhow::Result<Self> {
         let client_killer = Rc::new(RefCell::new(ClientKiller::new()));
         let state = Rc::new(RefCell::new(
@@ -113,7 +114,7 @@ impl AppHandler<HyprlandClient> {
 }
 
 fn main() -> glib::ExitCode {
-    let _compositor = Compositor::detect_compositor().expect("XDG_CURRENT_DESKTOP should be set.");
+    let compositor = Compositor::detect_compositor().expect("XDG_CURRENT_DESKTOP should be set.");
 
     let log_dir = std::env::var("XDG_STATE_HOME")
         .map(PathBuf::from)
@@ -143,7 +144,11 @@ fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(move |app| {
-        let mut handler = AppHandler::new(app, args.clone()).unwrap_or_else(|e| {
+        let mut handler = match compositor {
+            Compositor::Hyprland => AppHandler::<HyprlandClient>::new(app, args.clone()),
+            Compositor::Sway => todo!(),
+        }
+        .unwrap_or_else(|e| {
             log::error!("Error starting app: {e}");
             std::process::exit(1);
         });
