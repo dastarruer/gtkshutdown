@@ -3,6 +3,7 @@ mod client_killer;
 mod ui;
 
 use std::cell::RefCell;
+use std::env;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -112,6 +113,8 @@ impl AppHandler<HyprlandClient> {
 }
 
 fn main() -> glib::ExitCode {
+    let _compositor = Compositor::detect_compositor().expect("XDG_CURRENT_DESKTOP should be set.");
+
     let log_dir = std::env::var("XDG_STATE_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|_| {
@@ -175,4 +178,27 @@ fn main() -> glib::ExitCode {
 
     // Overwrite gtk cli args to use our own
     app.run_with_args::<&str>(&[])
+}
+
+enum Compositor {
+    Hyprland,
+    Sway,
+}
+
+impl Compositor {
+    /// Detect the compositor currently being used with XDG_CURRENT_DESKTOP.
+    fn detect_compositor() -> Option<Self> {
+        const HYPRLAND_STRING: &str = "Hyprland";
+        const SWAY_STRING: &str = "sway";
+
+        if let Ok(current_desktop) = &env::var("XDG_CURRENT_DESKTOP") {
+            match current_desktop.as_str() {
+                HYPRLAND_STRING => return Some(Self::Hyprland),
+                SWAY_STRING => return Some(Self::Sway),
+                _ => return None,
+            }
+        }
+
+        None
+    }
 }
