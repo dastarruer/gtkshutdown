@@ -13,3 +13,4 @@ gtk4 = "0.10.3"
 hyprland = { git = "https://github.com/hyprland-community/hyprland-rs", branch = "master" }
 log = "0.4.30"
 nix = { version = "0.31.3", features = ["signal"] }
+swayipc = "4.0.0"
