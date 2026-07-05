@@ -16,9 +16,9 @@ pub struct UiBuilder {
 }
 
 impl UiBuilder {
-    pub fn new<T: WaylandClient + 'static>(
+    pub fn new(
         app: &Application,
-        state: Rc<RefCell<AppState<T>>>,
+        state: Rc<RefCell<AppState>>,
         client_killer: Rc<RefCell<ClientKiller>>,
     ) -> Self {
         Self::load_css();
@@ -49,7 +49,7 @@ impl UiBuilder {
         }
     }
 
-    pub fn update<T: WaylandClient>(&mut self, state: &AppState<T>) {
+    pub fn update(&mut self, state: &AppState) {
         Self::update_app_list(&self.app_list, state);
         Self::update_header(&self.header, state.get_num_clients());
     }
@@ -86,7 +86,7 @@ impl UiBuilder {
         header.append(&shutdown_header);
     }
 
-    fn build_app_list<T: WaylandClient>(state: &AppState<T>) -> ListBox {
+    fn build_app_list(state: &AppState) -> ListBox {
         let list = ListBox::builder()
             // .vexpand will push the footer to the bottom of the window
             .vexpand(true)
@@ -100,7 +100,7 @@ impl UiBuilder {
         list
     }
 
-    fn update_app_list<T: WaylandClient>(list: &ListBox, state: &AppState<T>) {
+    fn update_app_list(list: &ListBox, state: &AppState) {
         // Clear list
         while let Some(row) = list.first_child() {
             list.remove(&row);
@@ -156,10 +156,10 @@ impl UiBuilder {
         }
     }
 
-    fn build_footer<T: WaylandClient + 'static>(
+    fn build_footer(
         window: &ApplicationWindow,
         client_killer: Rc<RefCell<ClientKiller>>,
-        state: Rc<RefCell<AppState<T>>>,
+        state: Rc<RefCell<AppState>>,
     ) -> Box {
         let footer = Box::builder()
             .orientation(Orientation::Horizontal)

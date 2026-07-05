@@ -13,6 +13,8 @@ use nix::{
     unistd::Pid,
 };
 
+use crate::client_killer::{hyprland::HyprlandClient, sway::SwayClient};
+
 enum KillAction {
     Graceful,
     Sigterm,
@@ -74,7 +76,7 @@ impl ClientKiller {
         Self {}
     }
 
-    pub fn force_kill_clients<T: WaylandClient>(&self, clients: &[T]) -> nix::Result<()> {
+    pub fn force_kill_clients(&self, clients: &[Client]) -> nix::Result<()> {
         for client in clients {
             kill(*client.pid(), Signal::SIGKILL)?;
         }
@@ -82,10 +84,7 @@ impl ClientKiller {
         Ok(())
     }
 
-    pub fn kill_clients<T: WaylandClient + Display>(
-        &mut self,
-        clients: &mut [T],
-    ) -> anyhow::Result<()> {
+    pub fn kill_clients(&mut self, clients: &mut [Client]) -> anyhow::Result<()> {
         for client in clients {
             log::trace!("Attempting to kill client {client}...");
 
@@ -101,7 +100,7 @@ impl ClientKiller {
         Ok(())
     }
 
-    fn kill_client<T: WaylandClient + Display>(&mut self, client: &mut T) -> anyhow::Result<()> {
+    fn kill_client(&mut self, client: &mut Client) -> anyhow::Result<()> {
         let pid = *client.pid();
         let status = client.status();
 
@@ -163,5 +162,114 @@ pub trait WaylandClient: Sized {
     /// client still hasn't died.
     fn may_be_hanging(&self) -> bool {
         matches!(self.status(), KillStatus::TermSent(instant) if instant.elapsed() > Duration::from_secs(3))
+    }
+}
+
+#[derive(Clone)]
+pub struct Client {
+    inner: ClientKind,
+}
+
+#[derive(Clone)]
+enum ClientKind {
+    Hyprland(HyprlandClient),
+    Sway(SwayClient),
+}
+
+impl std::fmt::Display for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.inner {
+            ClientKind::Hyprland(client) => write!(f, "{client}"),
+            ClientKind::Sway(client) => write!(f, "{client}"),
+        }
+    }
+}
+
+impl WaylandClient for Client {
+    fn pid(&self) -> &Pid {
+        match &self.inner {
+            ClientKind::Hyprland(client) => client.pid(),
+            ClientKind::Sway(client) => client.pid(),
+        }
+    }
+
+    fn app_id(&self) -> &str {
+        match &self.inner {
+            ClientKind::Hyprland(client) => client.app_id(),
+            ClientKind::Sway(client) => client.app_id(),
+        }
+    }
+
+    fn title(&self) -> Option<&str> {
+        match &self.inner {
+            ClientKind::Hyprland(client) => client.title(),
+            ClientKind::Sway(client) => client.title(),
+        }
+    }
+
+    fn is_layer(&self) -> bool {
+        match &self.inner {
+            ClientKind::Hyprland(client) => client.is_layer(),
+            ClientKind::Sway(client) => client.is_layer(),
+        }
+    }
+
+    fn status(&self) -> &KillStatus {
+        match &self.inner {
+            ClientKind::Hyprland(client) => client.status(),
+            ClientKind::Sway(client) => client.status(),
+        }
+    }
+
+    // fn get_open_clients(existing_clients: &[Self]) -> anyhow::Result<Vec<Self>> {
+    //     match existing_clients.first() {
+    //         Some(ClientKind::Hyprland(_)) => {
+    //             let existing: Vec<_> = existing_clients
+    //                 .iter()
+    //                 .map(|client| match client {
+    //                     ClientKind::Hyprland(client) => client,
+    //                     _ => unreachable!("mixed client types"),
+    //                 })
+    //                 .cloned()
+    //                 .collect();
+
+    //             Ok(HyprlandClient::get_open_clients(&existing)?
+    //                 .into_iter()
+    //                 .map(ClientKind::Hyprland)
+    //                 .collect())
+    //         }
+    //         Some(ClientKind::Sway(_)) => {
+    //             let existing: Vec<_> = existing_clients
+    //                 .iter()
+    //                 .map(|client| match client {
+    //                     ClientKind::Sway(client) => client,
+    //                     _ => unreachable!("mixed client types"),
+    //                 })
+    //                 .cloned()
+    //                 .collect();
+
+    //             Ok(SwayClient::get_open_clients(&existing)?
+    //                 .into_iter()
+    //                 .map(ClientKind::Sway)
+    //                 .collect())
+    //         }
+    //         None => {
+    //             todo!("Need some way to determine which backend to query.");
+    //         }
+    //     }
+    // }
+
+    fn gracefully_close(&self) -> anyhow::Result<()> {
+        match &self.inner {
+            ClientKind::Hyprland(client) => client.gracefully_close(),
+            ClientKind::Sway(client) => client.gracefully_close(),
+        }
+    }
+
+    fn update_status(&mut self) {
+        match &mut self.inner {
+            ClientKind::Hyprland(client) => client.update_status(),
+            ClientKind::Sway(client) => client.update_status(),
+        }
     }
 }
