@@ -19,8 +19,8 @@ enum HyprlandClientKind {
     Layer,
 }
 
-#[derive(PartialEq, Eq)]
-pub struct HyprlandClient {
+#[derive(PartialEq, Eq, Clone)]
+pub(super) struct HyprlandClient {
     pid: Pid,
     kind: HyprlandClientKind,
     app_id: String,

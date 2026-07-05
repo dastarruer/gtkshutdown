@@ -1,16 +1,16 @@
 use nix::{sys::signal::kill, unistd::Pid};
 
-use crate::client_killer::WaylandClient;
+use crate::client_killer::{Client, WaylandClient};
 
 #[derive(Clone)]
-pub struct AppState<T: WaylandClient> {
-    pub clients: Vec<T>,
+pub struct AppState {
+    pub clients: Vec<Client>,
 }
 
-impl<T: WaylandClient> AppState<T> {
+impl AppState {
     pub fn new() -> anyhow::Result<Self> {
         let clients = Vec::new();
-        let clients = T::get_open_clients(&clients)?;
+        let clients = Client::get_open_clients(&clients)?;
 
         Ok(Self { clients })
     }
@@ -21,7 +21,8 @@ impl<T: WaylandClient> AppState<T> {
 
     pub fn refresh(&mut self) -> anyhow::Result<()> {
         self.prune_dead_clients();
-        self.clients.extend(T::get_open_clients(&self.clients)?);
+        self.clients
+            .extend(Client::get_open_clients(&self.clients)?);
 
         Ok(())
     }

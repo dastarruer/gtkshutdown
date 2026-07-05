@@ -4,20 +4,17 @@ mod ui;
 
 use std::cell::RefCell;
 use std::env;
-use std::fmt::Display;
 use std::path::PathBuf;
 use std::rc::Rc;
 
 use anyhow::Context;
 use app::AppState;
 use clap::Parser;
-use client_killer::{ClientKiller, WaylandClient};
+use client_killer::ClientKiller;
 use flexi_logger::{FileSpec, Logger};
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;
-
-use crate::client_killer::hyprland::HyprlandClient;
 
 pub const APP_ID: &str = "io.github.dastarruer.gtkshutdown";
 
@@ -54,14 +51,14 @@ impl Args {
     }
 }
 
-struct AppHandler<T: WaylandClient> {
+struct AppHandler {
     args: Args,
-    state: Rc<RefCell<AppState<T>>>,
+    state: Rc<RefCell<AppState>>,
     ui: UiBuilder,
     client_killer: Rc<RefCell<ClientKiller>>,
 }
 
-impl<T: WaylandClient + Display + 'static> AppHandler<T> {
+impl AppHandler {
     fn new(app: &Application, args: Args) -> anyhow::Result<Self> {
         let client_killer = Rc::new(RefCell::new(ClientKiller::new()));
         let state = Rc::new(RefCell::new(
@@ -145,7 +142,7 @@ fn main() -> glib::ExitCode {
 
     app.connect_activate(move |app| {
         let mut handler = match compositor {
-            Compositor::Hyprland => AppHandler::<HyprlandClient>::new(app, args.clone()),
+            Compositor::Hyprland => AppHandler::new(app, args.clone()),
             Compositor::Sway => todo!(),
         }
         .unwrap_or_else(|e| {

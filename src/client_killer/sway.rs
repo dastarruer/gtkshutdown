@@ -4,8 +4,8 @@ use nix::unistd::Pid;
 
 use crate::client_killer::{KillStatus, WaylandClient};
 
-#[derive(PartialEq, Eq)]
-pub struct SwayClient {
+#[derive(PartialEq, Eq, Clone)]
+pub(super) struct SwayClient {
     pid: Pid,
     app_id: String,
     title: Option<String>,
