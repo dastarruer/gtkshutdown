@@ -16,6 +16,8 @@ use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;
 
+use crate::client_killer::Backend;
+
 pub const APP_ID: &str = "io.github.dastarruer.gtkshutdown";
 
 #[derive(Parser, Debug, Clone)]
@@ -59,10 +61,10 @@ struct AppHandler {
 }
 
 impl AppHandler {
-    fn new(app: &Application, args: Args) -> anyhow::Result<Self> {
+    fn new(app: &Application, args: Args, backend: Backend) -> anyhow::Result<Self> {
         let client_killer = Rc::new(RefCell::new(ClientKiller::new()));
         let state = Rc::new(RefCell::new(
-            AppState::new().context("Failed to get clients from Hyprland.")?,
+            AppState::new(backend).context("Failed to get clients from Hyprland.")?,
         ));
         let ui = UiBuilder::new(app, Rc::clone(&state), Rc::clone(&client_killer));
 
@@ -111,7 +113,7 @@ impl AppHandler {
 }
 
 fn main() -> glib::ExitCode {
-    let compositor = Compositor::detect_compositor().expect("XDG_CURRENT_DESKTOP should be set.");
+    let backend = Backend::detect().expect("XDG_CURRENT_DESKTOP should be set.");
 
     let log_dir = std::env::var("XDG_STATE_HOME")
         .map(PathBuf::from)
@@ -141,11 +143,7 @@ fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(move |app| {
-        let mut handler = match compositor {
-            Compositor::Hyprland => AppHandler::new(app, args.clone()),
-            Compositor::Sway => todo!(),
-        }
-        .unwrap_or_else(|e| {
+        let mut handler = AppHandler::new(app, args.clone(), backend.clone()).unwrap_or_else(|e| {
             log::error!("Error starting app: {e}");
             std::process::exit(1);
         });
@@ -180,27 +178,4 @@ fn main() -> glib::ExitCode {
 
     // Overwrite gtk cli args to use our own
     app.run_with_args::<&str>(&[])
-}
-
-enum Compositor {
-    Hyprland,
-    Sway,
-}
-
-impl Compositor {
-    /// Detect the compositor currently being used with XDG_CURRENT_DESKTOP.
-    fn detect_compositor() -> Option<Self> {
-        const HYPRLAND_STRING: &str = "Hyprland";
-        const SWAY_STRING: &str = "sway";
-
-        if let Ok(current_desktop) = &env::var("XDG_CURRENT_DESKTOP") {
-            match current_desktop.as_str() {
-                HYPRLAND_STRING => return Some(Self::Hyprland),
-                SWAY_STRING => return Some(Self::Sway),
-                _ => return None,
-            }
-        }
-
-        None
-    }
 }

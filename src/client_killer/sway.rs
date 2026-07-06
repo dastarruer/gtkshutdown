@@ -2,9 +2,9 @@ use std::fmt::Display;
 
 use nix::unistd::Pid;
 
-use crate::client_killer::{KillStatus, WaylandClient};
+use crate::client_killer::{Client, KillStatus, WaylandBackend, WaylandClient};
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, PartialOrd, Ord)]
 pub(super) struct SwayClient {
     pid: Pid,
     app_id: String,
@@ -43,15 +43,20 @@ impl WaylandClient for SwayClient {
         self.status = self.status.clone().update();
     }
 
-    fn get_open_clients(existing_clients: &[Self]) -> anyhow::Result<Vec<Self>> {
-        todo!()
-    }
-
     fn gracefully_close(&self) -> anyhow::Result<()> {
         todo!()
     }
 
     fn is_layer(&self) -> bool {
+        todo!()
+    }
+}
+
+#[derive(Clone)]
+pub(super) struct SwayBackend {}
+
+impl WaylandBackend for SwayBackend {
+    fn get_open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>> {
         todo!()
     }
 }
