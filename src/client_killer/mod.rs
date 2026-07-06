@@ -8,12 +8,16 @@ use std::{
 
 use anyhow::Context;
 
+use ::hyprland::data::LayerClient;
 use nix::{
     sys::signal::{Signal, kill},
     unistd::Pid,
 };
 
-use crate::client_killer::{hyprland::HyprlandClient, sway::SwayClient};
+use crate::client_killer::{
+    hyprland::{HyprlandBackend, HyprlandClient},
+    sway::{SwayBackend, SwayClient},
+};
 
 enum KillAction {
     Graceful,
@@ -21,7 +25,7 @@ enum KillAction {
     Sigkill,
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KillStatus {
     Alive,
     GracefulSent(Instant),
@@ -143,7 +147,6 @@ pub trait WaylandClient: Sized {
     fn title(&self) -> Option<&str>;
     fn is_layer(&self) -> bool;
     fn status(&self) -> &KillStatus;
-    fn get_open_clients(existing_clients: &[Self]) -> anyhow::Result<Vec<Self>>;
 
     /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
     /// signal, so apps have a chance to gracefully exit.
@@ -165,12 +168,13 @@ pub trait WaylandClient: Sized {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Ord, Eq, PartialOrd)]
+// Use a struct so HyprlandClient, SwayClient, etc. can stay private
 pub struct Client {
     inner: ClientKind,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Ord, Eq, PartialOrd)]
 enum ClientKind {
     Hyprland(HyprlandClient),
     Sway(SwayClient),
@@ -280,6 +284,73 @@ impl WaylandClient for Client {
         match self.client_mut() {
             ClientKind::Hyprland(client) => client.update_status(),
             ClientKind::Sway(client) => client.update_status(),
+        }
+    }
+}
+
+impl From<::hyprland::data::Client> for Client {
+    fn from(value: ::hyprland::data::Client) -> Self {
+        Client {
+            inner: ClientKind::Hyprland(HyprlandClient::from(value)),
+        }
+    }
+}
+
+impl From<LayerClient> for Client {
+    fn from(value: LayerClient) -> Self {
+        Client {
+            inner: ClientKind::Hyprland(HyprlandClient::from(value)),
+        }
+    }
+}
+
+pub trait WaylandBackend {
+    fn get_open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>>;
+}
+
+#[derive(Clone)]
+pub struct Backend {
+    inner: BackendKind,
+}
+
+#[derive(Clone)]
+enum BackendKind {
+    Hyprland(HyprlandBackend),
+    Sway(SwayBackend),
+}
+
+impl Backend {
+    /// Detects and returns the required backend by checking
+    /// `XDG_CURRENT_DESKTOP`.
+    pub fn detect() -> Option<Self> {
+        const HYPRLAND_STRING: &str = "Hyprland";
+        const SWAY_STRING: &str = "sway";
+
+        if let Ok(current_desktop) = &std::env::var("XDG_CURRENT_DESKTOP") {
+            match current_desktop.as_str() {
+                HYPRLAND_STRING => {
+                    return Some(Backend {
+                        inner: BackendKind::Hyprland(HyprlandBackend {}),
+                    });
+                }
+                SWAY_STRING => {
+                    return Some(Backend {
+                        inner: BackendKind::Sway(SwayBackend {}),
+                    });
+                }
+                _ => return None,
+            }
+        }
+
+        None
+    }
+}
+
+impl WaylandBackend for Backend {
+    fn get_open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>> {
+        match &self.inner {
+            BackendKind::Hyprland(backend) => backend.get_open_clients(existing_clients),
+            BackendKind::Sway(backend) => backend.get_open_clients(existing_clients),
         }
     }
 }
