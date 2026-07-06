@@ -178,44 +178,54 @@ enum ClientKind {
 
 impl std::fmt::Display for Client {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.inner {
+        match self.client() {
             ClientKind::Hyprland(client) => write!(f, "{client}"),
             ClientKind::Sway(client) => write!(f, "{client}"),
         }
     }
 }
 
+impl Client {
+    fn client(&self) -> &ClientKind {
+        &self.inner
+    }
+
+    fn client_mut(&mut self) -> &mut ClientKind {
+        &mut self.inner
+    }
+}
+
 impl WaylandClient for Client {
     fn pid(&self) -> &Pid {
-        match &self.inner {
+        match self.client() {
             ClientKind::Hyprland(client) => client.pid(),
             ClientKind::Sway(client) => client.pid(),
         }
     }
 
     fn app_id(&self) -> &str {
-        match &self.inner {
+        match self.client() {
             ClientKind::Hyprland(client) => client.app_id(),
             ClientKind::Sway(client) => client.app_id(),
         }
     }
 
     fn title(&self) -> Option<&str> {
-        match &self.inner {
+        match self.client() {
             ClientKind::Hyprland(client) => client.title(),
             ClientKind::Sway(client) => client.title(),
         }
     }
 
     fn is_layer(&self) -> bool {
-        match &self.inner {
+        match self.client() {
             ClientKind::Hyprland(client) => client.is_layer(),
             ClientKind::Sway(client) => client.is_layer(),
         }
     }
 
     fn status(&self) -> &KillStatus {
-        match &self.inner {
+        match self.client() {
             ClientKind::Hyprland(client) => client.status(),
             ClientKind::Sway(client) => client.status(),
         }
@@ -260,14 +270,14 @@ impl WaylandClient for Client {
     // }
 
     fn gracefully_close(&self) -> anyhow::Result<()> {
-        match &self.inner {
+        match self.client() {
             ClientKind::Hyprland(client) => client.gracefully_close(),
             ClientKind::Sway(client) => client.gracefully_close(),
         }
     }
 
     fn update_status(&mut self) {
-        match &mut self.inner {
+        match self.client_mut() {
             ClientKind::Hyprland(client) => client.update_status(),
             ClientKind::Sway(client) => client.update_status(),
         }
