@@ -1,15 +1,14 @@
 use nix::{sys::signal::kill, unistd::Pid};
 
-use crate::client_killer::{Backend, Client, WaylandBackend, WaylandClient};
+use crate::client_killer::{Client, WaylandBackend};
 
-#[derive(Clone)]
 pub struct AppState {
     pub clients: Vec<Client>,
-    backend: Backend,
+    pub backend: Box<dyn WaylandBackend>,
 }
 
 impl AppState {
-    pub fn new(backend: Backend) -> anyhow::Result<Self> {
+    pub fn new(backend: Box<dyn WaylandBackend>) -> anyhow::Result<Self> {
         let clients = Vec::new();
         let clients = backend.get_open_clients(&clients)?;
 

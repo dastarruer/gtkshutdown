@@ -3,7 +3,6 @@ mod client_killer;
 mod ui;
 
 use std::cell::RefCell;
-use std::env;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -16,7 +15,7 @@ use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use ui::UiBuilder;
 
-use crate::client_killer::Backend;
+use crate::client_killer::{WaylandBackend, detect_backend};
 
 pub const APP_ID: &str = "io.github.dastarruer.gtkshutdown";
 
@@ -61,7 +60,11 @@ struct AppHandler {
 }
 
 impl AppHandler {
-    fn new(app: &Application, args: Args, backend: Backend) -> anyhow::Result<Self> {
+    fn new(
+        app: &Application,
+        args: Args,
+        backend: Box<dyn WaylandBackend>,
+    ) -> anyhow::Result<Self> {
         let client_killer = Rc::new(RefCell::new(ClientKiller::new()));
         let state = Rc::new(RefCell::new(
             AppState::new(backend).context("Failed to get clients from Hyprland.")?,
@@ -91,9 +94,10 @@ impl AppHandler {
 
         if !self.args.dry_run {
             log::info!("The killing begins! Killing open clients...");
-            self.client_killer
-                .borrow_mut()
-                .kill_clients(&mut self.state.borrow_mut().clients)?;
+            self.client_killer.borrow_mut().kill_clients(
+                &*self.state.borrow().backend, // Such beautiful syntax just to get a ref to the inside of the Box
+                &mut self.state.borrow_mut().clients,
+            )?;
         }
 
         self.ui.update(&self.state.borrow());
@@ -113,8 +117,6 @@ impl AppHandler {
 }
 
 fn main() -> glib::ExitCode {
-    let backend = Backend::detect().expect("XDG_CURRENT_DESKTOP should be set.");
-
     let log_dir = std::env::var("XDG_STATE_HOME")
         .map(PathBuf::from)
         .unwrap_or_else(|_| {
@@ -143,7 +145,9 @@ fn main() -> glib::ExitCode {
     let app = Application::builder().application_id(APP_ID).build();
 
     app.connect_activate(move |app| {
-        let mut handler = AppHandler::new(app, args.clone(), backend.clone()).unwrap_or_else(|e| {
+        let backend = detect_backend().expect("XDG_CURRENT_DESKTOP should be set.");
+
+        let mut handler = AppHandler::new(app, args.clone(), backend).unwrap_or_else(|e| {
             log::error!("Error starting app: {e}");
             std::process::exit(1);
         });

@@ -14,10 +14,7 @@ use nix::{
     unistd::Pid,
 };
 
-use crate::client_killer::{
-    hyprland::{HyprlandBackend, HyprlandClient},
-    sway::{SwayBackend, SwayClient},
-};
+use crate::client_killer::{hyprland::HyprlandBackend, sway::SwayBackend};
 
 enum KillAction {
     Graceful,
@@ -88,11 +85,15 @@ impl ClientKiller {
         Ok(())
     }
 
-    pub fn kill_clients(&mut self, clients: &mut [Client]) -> anyhow::Result<()> {
+    pub fn kill_clients(
+        &mut self,
+        backend: &dyn WaylandBackend,
+        clients: &mut [Client],
+    ) -> anyhow::Result<()> {
         for client in clients {
             log::trace!("Attempting to kill client {client}...");
 
-            self.kill_client(client).with_context(|| {
+            self.kill_client(backend, client).with_context(|| {
                 format!(
                     "Failed to kill client {} (pid: {})",
                     client.app_id(),
@@ -104,7 +105,11 @@ impl ClientKiller {
         Ok(())
     }
 
-    fn kill_client(&mut self, client: &mut Client) -> anyhow::Result<()> {
+    fn kill_client(
+        &mut self,
+        backend: &dyn WaylandBackend,
+        client: &mut Client,
+    ) -> anyhow::Result<()> {
         let pid = *client.pid();
         let status = client.status();
 
@@ -119,7 +124,7 @@ impl ClientKiller {
                         return Ok(());
                     } else {
                         log::debug!("Requesting graceful close to client {app_id}...");
-                        client.gracefully_close()?;
+                        backend.gracefully_close(client)?;
                     }
                 }
                 KillAction::Sigterm => {
@@ -141,216 +146,126 @@ impl ClientKiller {
     }
 }
 
-pub trait WaylandClient: Sized {
-    fn pid(&self) -> &Pid;
-    fn app_id(&self) -> &str;
-    fn title(&self) -> Option<&str>;
-    fn is_layer(&self) -> bool;
-    fn status(&self) -> &KillStatus;
-
-    /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
-    /// signal, so apps have a chance to gracefully exit.
-    fn gracefully_close(&self) -> anyhow::Result<()>;
-    fn update_status(&mut self);
-
-    /// Check if the client is asking the user to save their work. Note that
-    /// there is no reliable way to detect save dialogs on Linux, so this is
-    /// based on if the client is still open even after requesting it to
-    /// gracefully exit.
-    fn may_be_saving(&self) -> bool {
-        matches!(self.status(), KillStatus::GracefulSent(instant) if instant.elapsed() > Duration::from_secs(5))
-    }
-
-    /// Check if the client is hanging if after sending a SIGTERM signal, the
-    /// client still hasn't died.
-    fn may_be_hanging(&self) -> bool {
-        matches!(self.status(), KillStatus::TermSent(instant) if instant.elapsed() > Duration::from_secs(3))
-    }
-}
-
-#[derive(Clone, PartialEq, Ord, Eq, PartialOrd)]
-// Use a struct so HyprlandClient, SwayClient, etc. can stay private
+#[derive(PartialEq, Eq, Clone)]
 pub struct Client {
-    inner: ClientKind,
+    pid: Pid,
+    kind: ClientKind,
+    app_id: String,
+    title: Option<String>,
+    status: KillStatus,
 }
 
-#[derive(Clone, PartialEq, Ord, Eq, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, PartialOrd)]
 enum ClientKind {
-    Hyprland(HyprlandClient),
-    Sway(SwayClient),
+    Window,
+    Layer,
 }
 
-impl std::fmt::Display for Client {
+impl Display for Client {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.client() {
-            ClientKind::Hyprland(client) => write!(f, "{client}"),
-            ClientKind::Sway(client) => write!(f, "{client}"),
-        }
+        write!(f, "Client {{ app_id: {}, pid: {} }}", self.app_id, self.pid)
     }
 }
 
-impl Client {
-    fn client(&self) -> &ClientKind {
-        &self.inner
-    }
-
-    fn client_mut(&mut self) -> &mut ClientKind {
-        &mut self.inner
+impl PartialOrd for Client {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 
-impl WaylandClient for Client {
-    fn pid(&self) -> &Pid {
-        match self.client() {
-            ClientKind::Hyprland(client) => client.pid(),
-            ClientKind::Sway(client) => client.pid(),
-        }
-    }
-
-    fn app_id(&self) -> &str {
-        match self.client() {
-            ClientKind::Hyprland(client) => client.app_id(),
-            ClientKind::Sway(client) => client.app_id(),
-        }
-    }
-
-    fn title(&self) -> Option<&str> {
-        match self.client() {
-            ClientKind::Hyprland(client) => client.title(),
-            ClientKind::Sway(client) => client.title(),
-        }
-    }
-
-    fn is_layer(&self) -> bool {
-        match self.client() {
-            ClientKind::Hyprland(client) => client.is_layer(),
-            ClientKind::Sway(client) => client.is_layer(),
-        }
-    }
-
-    fn status(&self) -> &KillStatus {
-        match self.client() {
-            ClientKind::Hyprland(client) => client.status(),
-            ClientKind::Sway(client) => client.status(),
-        }
-    }
-
-    // fn get_open_clients(existing_clients: &[Self]) -> anyhow::Result<Vec<Self>> {
-    //     match existing_clients.first() {
-    //         Some(ClientKind::Hyprland(_)) => {
-    //             let existing: Vec<_> = existing_clients
-    //                 .iter()
-    //                 .map(|client| match client {
-    //                     ClientKind::Hyprland(client) => client,
-    //                     _ => unreachable!("mixed client types"),
-    //                 })
-    //                 .cloned()
-    //                 .collect();
-
-    //             Ok(HyprlandClient::get_open_clients(&existing)?
-    //                 .into_iter()
-    //                 .map(ClientKind::Hyprland)
-    //                 .collect())
-    //         }
-    //         Some(ClientKind::Sway(_)) => {
-    //             let existing: Vec<_> = existing_clients
-    //                 .iter()
-    //                 .map(|client| match client {
-    //                     ClientKind::Sway(client) => client,
-    //                     _ => unreachable!("mixed client types"),
-    //                 })
-    //                 .cloned()
-    //                 .collect();
-
-    //             Ok(SwayClient::get_open_clients(&existing)?
-    //                 .into_iter()
-    //                 .map(ClientKind::Sway)
-    //                 .collect())
-    //         }
-    //         None => {
-    //             todo!("Need some way to determine which backend to query.");
-    //         }
-    //     }
-    // }
-
-    fn gracefully_close(&self) -> anyhow::Result<()> {
-        match self.client() {
-            ClientKind::Hyprland(client) => client.gracefully_close(),
-            ClientKind::Sway(client) => client.gracefully_close(),
-        }
-    }
-
-    fn update_status(&mut self) {
-        match self.client_mut() {
-            ClientKind::Hyprland(client) => client.update_status(),
-            ClientKind::Sway(client) => client.update_status(),
-        }
+impl Ord for Client {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.is_layer()
+            .cmp(&other.is_layer()) // Sort non-layer clients lower
+            .then_with(|| self.app_id().cmp(other.app_id())) // Sort clients by app_id
     }
 }
 
 impl From<::hyprland::data::Client> for Client {
     fn from(value: ::hyprland::data::Client) -> Self {
-        Client {
-            inner: ClientKind::Hyprland(HyprlandClient::from(value)),
+        Self {
+            pid: Pid::from_raw(value.pid),
+            title: Some(value.title.to_owned()),
+            app_id: value.class.to_owned(),
+            kind: ClientKind::Window,
+            status: KillStatus::Alive,
         }
     }
 }
 
 impl From<LayerClient> for Client {
     fn from(value: LayerClient) -> Self {
-        Client {
-            inner: ClientKind::Hyprland(HyprlandClient::from(value)),
+        Self {
+            pid: Pid::from_raw(value.pid),
+            title: None,                        // Layers do not have titles
+            app_id: value.namespace.to_owned(), // Layer namespace is close enough to an app ID
+            kind: ClientKind::Layer,
+            status: KillStatus::Alive,
         }
+    }
+}
+
+impl Client {
+    pub fn pid(&self) -> &Pid {
+        &self.pid
+    }
+
+    pub fn app_id(&self) -> &str {
+        &self.app_id
+    }
+
+    pub fn title(&self) -> Option<&str> {
+        self.title.as_deref()
+    }
+
+    pub fn is_layer(&self) -> bool {
+        self.kind == ClientKind::Layer
+    }
+
+    pub fn status(&self) -> &KillStatus {
+        &self.status
+    }
+
+    pub fn update_status(&mut self) {
+        self.status = self.status.clone().update();
+    }
+
+    /// Check if the client is asking the user to save their work. Note that
+    /// there is no reliable way to detect save dialogs on Linux, so this is
+    /// based on if the client is still open even after requesting it to
+    /// gracefully exit.
+    pub fn may_be_saving(&self) -> bool {
+        matches!(self.status(), KillStatus::GracefulSent(instant) if instant.elapsed() > Duration::from_secs(5))
+    }
+
+    /// Check if the client is hanging if after sending a SIGTERM signal, the
+    /// client still hasn't died.
+    pub fn may_be_hanging(&self) -> bool {
+        matches!(self.status(), KillStatus::TermSent(instant) if instant.elapsed() > Duration::from_secs(3))
     }
 }
 
 pub trait WaylandBackend {
     fn get_open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>>;
+
+    /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
+    /// signal, so apps have a chance to gracefully exit.
+    fn gracefully_close(&self, client: &Client) -> anyhow::Result<()>;
 }
 
-#[derive(Clone)]
-pub struct Backend {
-    inner: BackendKind,
-}
+/// Detects and returns the required backend by checking
+/// `XDG_CURRENT_DESKTOP`.
+pub fn detect_backend() -> Option<Box<dyn WaylandBackend>> {
+    const HYPRLAND_STRING: &str = "Hyprland";
+    const SWAY_STRING: &str = "sway";
 
-#[derive(Clone)]
-enum BackendKind {
-    Hyprland(HyprlandBackend),
-    Sway(SwayBackend),
-}
-
-impl Backend {
-    /// Detects and returns the required backend by checking
-    /// `XDG_CURRENT_DESKTOP`.
-    pub fn detect() -> Option<Self> {
-        const HYPRLAND_STRING: &str = "Hyprland";
-        const SWAY_STRING: &str = "sway";
-
-        if let Ok(current_desktop) = &std::env::var("XDG_CURRENT_DESKTOP") {
-            match current_desktop.as_str() {
-                HYPRLAND_STRING => {
-                    return Some(Backend {
-                        inner: BackendKind::Hyprland(HyprlandBackend {}),
-                    });
-                }
-                SWAY_STRING => {
-                    return Some(Backend {
-                        inner: BackendKind::Sway(SwayBackend {}),
-                    });
-                }
-                _ => return None,
-            }
-        }
-
-        None
-    }
-}
-
-impl WaylandBackend for Backend {
-    fn get_open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>> {
-        match &self.inner {
-            BackendKind::Hyprland(backend) => backend.get_open_clients(existing_clients),
-            BackendKind::Sway(backend) => backend.get_open_clients(existing_clients),
+    if let Ok(current_desktop) = &std::env::var("XDG_CURRENT_DESKTOP") {
+        match current_desktop.as_str() {
+            HYPRLAND_STRING => return Some(Box::new(HyprlandBackend {})),
+            SWAY_STRING => return Some(Box::new(SwayBackend {})),
+            _ => return None,
         }
     }
+
+    None
 }
