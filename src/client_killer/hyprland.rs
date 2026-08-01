@@ -14,7 +14,7 @@ use crate::{
 pub(super) struct HyprlandBackend {}
 
 impl WaylandBackend for HyprlandBackend {
-    fn get_open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>> {
+    fn open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>> {
         let windows = Clients::get()?;
         let windows = windows
             .iter()

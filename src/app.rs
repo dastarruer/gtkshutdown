@@ -10,7 +10,7 @@ pub struct AppState {
 impl AppState {
     pub fn new(backend: Box<dyn WaylandBackend>) -> anyhow::Result<Self> {
         let clients = Vec::new();
-        let clients = backend.get_open_clients(&clients)?;
+        let clients = backend.open_clients(&clients)?;
 
         Ok(Self { clients, backend })
     }
@@ -22,7 +22,7 @@ impl AppState {
     pub fn refresh(&mut self) -> anyhow::Result<()> {
         self.prune_dead_clients();
         self.clients
-            .extend(self.backend.get_open_clients(&self.clients)?);
+            .extend(self.backend.open_clients(&self.clients)?);
 
         Ok(())
     }
