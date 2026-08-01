@@ -247,7 +247,7 @@ impl Client {
 
 pub trait WaylandBackend {
     /// Retrieves all currently-open clients.
-    fn open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>>;
+    fn open_clients(&self) -> anyhow::Result<Vec<Client>>;
 
     /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
     /// signal, so apps have a chance to gracefully exit.
