@@ -5,28 +5,19 @@ use hyprland::{
     shared::HyprData,
 };
 
-use crate::{
-    APP_ID,
-    client_killer::{Client, WaylandBackend},
-};
+use crate::client_killer::{Client, WaylandBackend};
 
 #[derive(Clone)]
 pub(super) struct HyprlandBackend {}
 
 impl WaylandBackend for HyprlandBackend {
-    fn open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>> {
+    fn open_clients(&self) -> anyhow::Result<Vec<Client>> {
         let windows = Clients::get()?;
         let windows = windows
             .iter()
             .filter(|c| {
-                // Filter out gtkshutdown so the app doesn't kill itself
-                c.class != APP_ID
-                &&
-                c.pid > 0 && // Skip negative PIDs to avoid nuking entire session
-                // Avoid overwriting existing clients
-                !existing_clients
-                        .iter()
-                        .any(|existing| existing.pid().as_raw() == c.pid)
+                // Skip negative PIDs to avoid nuking entire session
+                c.pid > 0
             })
             .cloned()
             .map(Client::from);
@@ -36,12 +27,7 @@ impl WaylandBackend for HyprlandBackend {
             .iter()
             .flat_map(|(_, display)| display.iter())
             .flat_map(|(_, layers)| layers.iter())
-            .filter(|c| {
-                c.pid > 0
-                    && !existing_clients
-                        .iter()
-                        .any(|existing| existing.pid().as_raw() == c.pid)
-            })
+            .filter(|c| c.pid > 0)
             .cloned()
             .map(Client::from);
 

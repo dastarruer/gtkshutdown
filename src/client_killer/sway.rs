@@ -4,7 +4,7 @@ use crate::client_killer::{Client, WaylandBackend};
 pub(super) struct SwayBackend {}
 
 impl WaylandBackend for SwayBackend {
-    fn open_clients(&self, existing_clients: &[Client]) -> anyhow::Result<Vec<Client>> {
+    fn open_clients(&self) -> anyhow::Result<Vec<Client>> {
         todo!()
     }
 
