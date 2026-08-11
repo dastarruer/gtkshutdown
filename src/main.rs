@@ -94,10 +94,13 @@ impl AppHandler {
 
         if !self.args.dry_run {
             log::info!("The killing begins! Killing open clients...");
-            self.client_killer.borrow_mut().kill_clients(
-                &*self.state.borrow().backend, // Such beautiful syntax just to get a ref to the inside of the Box
-                &mut self.state.borrow_mut().clients,
-            )?;
+            let mut state = self.state.borrow_mut();
+            let AppState {
+                backend, clients, ..
+            } = &mut *state;
+            self.client_killer
+                .borrow_mut()
+                .kill_clients(&**backend, clients)?;
         }
 
         self.ui.update(&self.state.borrow());
