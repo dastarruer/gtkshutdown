@@ -4,6 +4,7 @@ use std::{
     io::{Read, Write},
     os::unix::net::UnixStream,
     path::Path,
+    time::Duration,
 };
 
 use anyhow::Context;
@@ -111,7 +112,12 @@ impl HyprlandBackend {
     }
 
     fn send_ipc_request(request: &str) -> anyhow::Result<String> {
+        let timeout = Duration::from_secs(2);
+
         let mut stream = Self::ipc_stream()?;
+        stream.set_read_timeout(Some(timeout))?;
+        stream.set_write_timeout(Some(timeout))?;
+
         stream.write_all(request.as_bytes())?;
         stream.shutdown(std::net::Shutdown::Write)?;
 
