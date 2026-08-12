@@ -166,45 +166,178 @@ impl WaylandBackend for HyprlandBackend {
         Ok(clients)
     }
 
-    fn gracefully_close(&self, client: &super::Client) -> anyhow::Result<()> {
-        let hyprlang_dispatch =
-            DispatchType::CloseWindow(WindowIdentifier::ProcessId(client.pid().as_raw() as u32));
+    fn gracefully_close(&self, client: &Client) -> anyhow::Result<()> {
+        let pid = client.pid();
+        let cmd = if self.is_using_lua {
+            format!("dispatch hl.dsp.window.close({{ window = \"pid:{pid}\" }})")
+        } else {
+            format!("dispatch closewindow pid:{pid}")
+        };
+        Self::send_ipc_request(&cmd)?;
+        Ok(())
+    }
+}
 
-        let lua_args = format!(
-            r#"hl.dsp.window.close({{ window = "pid:{}" }})"#,
-            client.pid().as_raw()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use indoc::indoc;
+
+    #[test]
+    fn deserialize_window_client() {
+        let json = indoc! {r#"
+            [{
+                "floating": false,
+                "monitor": 1,
+                "class": "window",
+                "title": "~",
+                "initialClass": "window",
+                "initialTitle": "window",
+                "pid": 3441,
+                "xwayland": false,
+                "pinned": false,
+                "pinFullscreened": false,
+                "fullscreen": 0,
+                "fullscreenClient": 0,
+                "fullscreenHandler": "scrolling",
+                "allowedOverFullscreen": false,
+                "grouped": [],
+                "tags": [],
+                "swallowing": "0x0",
+                "focusHistoryID": 1,
+                "inhibitingIdle": false,
+                "xdgTag": "",
+                "xdgDescription": "",
+                "contentType": "none",
+                "tearingHint": false,
+                "stableId": "1800001b"
+            }]
+        "#};
+        let client = serde_json::from_str::<Vec<HyprlandWindowClient>>(json)
+            .expect("test JSON should be successfully deserialized");
+        let expected = vec![HyprlandWindowClient {
+            pid: 3441,
+            title: String::from("~"),
+            class: String::from("window"),
+        }];
+
+        pretty_assertions::assert_eq!(client, expected);
+    }
+
+    #[test]
+    fn deserialize_layer_clients() {
+        let json = indoc! {r#"
+            {
+            "monitor_1": {
+                "levels": {
+                    "0": [
+                            {
+                                "address": "0x6071d7158a90",
+                                "x": 1920,
+                                "y": 0,
+                                "w": 1920,
+                                "h": 1080,
+                                "alpha": 1,
+                                "namespace": "layer",
+                                "pid": 3442
+                            }
+                    ],
+                    "1": [
+            ],
+                    "2": [
+                            {
+                                "address": "0x6071d7150a30",
+                                "x": 1920,
+                                "y": 0,
+                                "w": 1920,
+                                "h": 48,
+                                "alpha": 1,
+                                "namespace": "layer",
+                                "pid": 3442
+                            }
+                    ],
+                    "3": [
+            ]
+                }
+            },"monitor_2": {
+                "levels": {
+
+                    "0": [
+                            {
+                                "address": "0x6071d717c2f0",
+                                "x": 0,
+                                "y": 0,
+                                "w": 1920,
+                                "h": 1080,
+                                "alpha": 1,
+                                "namespace": "layer",
+                                "pid": 3442
+                            }
+                    ],
+                    "1": [
+            ],
+                    "2": [
+                            {
+                                "address": "0x6071d715b0b0",
+                                "x": 0,
+                                "y": 0,
+                                "w": 1920,
+                                "h": 48,
+                                "alpha": 0,
+                                "namespace": "layer",
+                                "pid": 3442
+                            }
+                    ],
+                    "3": [
+            ]
+                }
+            }
+            }
+        "#};
+        let monitors = serde_json::from_str::<HashMap<String, Monitor>>(json)
+            .expect("test JSON should be successfully deserialized");
+
+        let expected_client = HyprlandLayerClient {
+            pid: 3442,
+            namespace: String::from("layer"),
+        };
+
+        let mut monitor_1_levels = HashMap::new();
+        monitor_1_levels.insert(String::from("0"), vec![expected_client.clone()]);
+        monitor_1_levels.insert(String::from("1"), vec![]);
+        monitor_1_levels.insert(String::from("2"), vec![expected_client.clone()]);
+        monitor_1_levels.insert(String::from("3"), vec![]);
+
+        let mut monitor_2_levels = HashMap::new();
+        monitor_2_levels.insert(String::from("0"), vec![expected_client.clone()]);
+        monitor_2_levels.insert(String::from("1"), vec![]);
+        monitor_2_levels.insert(String::from("2"), vec![expected_client.clone()]);
+        monitor_2_levels.insert(String::from("3"), vec![]);
+
+        let mut expected = HashMap::new();
+        expected.insert(
+            String::from("monitor_1"),
+            Monitor {
+                levels: monitor_1_levels,
+            },
+        );
+        expected.insert(
+            String::from("monitor_2"),
+            Monitor {
+                levels: monitor_2_levels,
+            },
         );
 
-        // Equivalent of calling `hyprctl dispatch closewindow pid:<PID>`
-        match Dispatch::call(hyprlang_dispatch) {
-            Ok(_) => Ok(()),
-            // If this happens, assume that the user is using hyprland lua
-            Err(HyprError::NotOkDispatch(_)) => {
-                log::debug!("Running: hyprctl dispatch {lua_args}");
+        pretty_assertions::assert_eq!(monitors, expected);
 
-                // Run hyprctl dispatch manually, since hyprland-rs doesn't support lua as of now
-                let output = std::process::Command::new("hyprctl")
-                    .args(["dispatch", &lua_args])
-                    .output()?;
+        let layers = HyprlandBackend::deserialize_layers_json(json);
+        let expected = vec![
+            expected_client.clone(),
+            expected_client.clone(),
+            expected_client.clone(),
+            expected_client,
+        ];
 
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                let stdout = String::from_utf8_lossy(&output.stdout);
-
-                if !output.status.success() {
-                    log::error!(
-                        "hyprctl dispatch failed (status {}): stdout={stdout} stderr={stderr}",
-                        output.status
-                    );
-                } else {
-                    log::debug!(
-                        "hyprctl dispatch succeeded (status {}): stdout={stdout} stderr={stderr}",
-                        output.status
-                    );
-                }
-
-                Ok(())
-            }
-            Err(e) => Err(e.into()),
-        }
+        pretty_assertions::assert_eq!(layers, expected);
     }
 }
