@@ -116,8 +116,8 @@ impl ClientKiller {
         if let Some(action) = status.poll() {
             match action {
                 KillAction::Graceful => {
-                    if client.is_layer() {
-                        log::debug!("Client {app_id} is a layer, sending SIGTERM...");
+                    if client.is_layer() || client.unique_id().is_empty() {
+                        log::debug!("Sending SIGTERM to client {app_id}...");
                         kill(pid, Signal::SIGTERM)?;
 
                         return Ok(());
@@ -148,6 +148,9 @@ impl ClientKiller {
 #[derive(PartialEq, Eq, Clone)]
 pub struct Client {
     pid: Pid,
+    // Used to quit apps. Since it may have different names across compositors, 
+    // it's called 'unique_id' 
+    unique_id: String, 
     kind: ClientKind,
     app_id: String,
     title: Option<String>,
@@ -199,6 +202,10 @@ impl Client {
 
     pub fn status(&self) -> &KillStatus {
         &self.status
+    }
+
+    pub fn unique_id(&self) -> &str {
+        &self.unique_id
     }
 
     pub fn update_status(&mut self) {

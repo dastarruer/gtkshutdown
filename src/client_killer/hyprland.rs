@@ -16,6 +16,7 @@ use crate::client_killer::{Client, ClientKind, KillStatus, WaylandBackend};
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 struct HyprlandWindowClient {
     pid: i32,
+    address: String,
     class: String,
     title: String,
 }
@@ -24,6 +25,7 @@ impl From<HyprlandWindowClient> for Client {
     fn from(value: HyprlandWindowClient) -> Self {
         Self {
             pid: Pid::from_raw(value.pid),
+            unique_id: value.address,
             app_id: value.class,
             title: Some(value.title),
             kind: ClientKind::Window,
@@ -40,6 +42,7 @@ struct Monitor {
 #[derive(serde::Deserialize, Clone, Debug, PartialEq, Eq)]
 struct HyprlandLayerClient {
     pid: i32,
+    address: String,
     namespace: String,
 }
 
@@ -47,6 +50,7 @@ impl From<HyprlandLayerClient> for Client {
     fn from(value: HyprlandLayerClient) -> Self {
         Self {
             pid: Pid::from_raw(value.pid),
+            unique_id: value.address,
             app_id: value.namespace,
             title: None,
             kind: ClientKind::Layer,
@@ -170,11 +174,11 @@ impl WaylandBackend for HyprlandBackend {
     }
 
     fn gracefully_close(&self, client: &Client) -> anyhow::Result<()> {
-        let pid = client.pid();
+        let address = client.unique_id();
         let cmd = if self.is_using_lua {
-            format!("dispatch hl.dsp.window.close({{ window = \"pid:{pid}\" }})")
+            format!("dispatch hl.dsp.window.close({{ window = \"address:{address}\" }})")
         } else {
-            format!("dispatch closewindow pid:{pid}")
+            format!("dispatch closewindow address:{address}")
         };
         Self::send_ipc_request(&cmd)?;
         Ok(())
@@ -190,6 +194,7 @@ mod tests {
     fn deserialize_window_client() {
         let json = indoc! {r#"
             [{
+                "address": "0x6071d717d3c0",
                 "floating": false,
                 "monitor": 1,
                 "class": "window",
@@ -220,6 +225,7 @@ mod tests {
             .expect("test JSON should be successfully deserialized");
         let expected = vec![HyprlandWindowClient {
             pid: 3441,
+            address: String::from("0x6071d717d3c0"),
             title: String::from("~"),
             class: String::from("window"),
         }];
@@ -249,7 +255,7 @@ mod tests {
             ],
                     "2": [
                             {
-                                "address": "0x6071d7150a30",
+                                "address": "0x6071d7158a90",
                                 "x": 1920,
                                 "y": 0,
                                 "w": 1920,
@@ -267,7 +273,7 @@ mod tests {
 
                     "0": [
                             {
-                                "address": "0x6071d717c2f0",
+                                "address": "0x6071d7158a90",
                                 "x": 0,
                                 "y": 0,
                                 "w": 1920,
@@ -281,7 +287,7 @@ mod tests {
             ],
                     "2": [
                             {
-                                "address": "0x6071d715b0b0",
+                                "address": "0x6071d7158a90",
                                 "x": 0,
                                 "y": 0,
                                 "w": 1920,
@@ -302,6 +308,7 @@ mod tests {
 
         let expected_client = HyprlandLayerClient {
             pid: 3442,
+            address: String::from("0x6071d7158a90"),
             namespace: String::from("layer"),
         };
 
