@@ -26,18 +26,13 @@ impl AppState {
         let existing_clients = self.clients.clone();
         let open_clients = self.backend.open_clients()?;
 
-        self.clients.extend(
-            open_clients
-                .iter()
-                .filter(|c| {
-                    // Filter out gtkshutdown so the app doesn't kill itself
-                    c.app_id() != APP_ID
-                        && !existing_clients
-                            .iter()
-                            .any(|existing| existing.pid() == c.pid())
-                })
-                .cloned(),
-        );
+        self.clients.extend(open_clients.into_iter().filter(|c| {
+            // Filter out gtkshutdown so the app doesn't kill itself
+            c.app_id() != APP_ID
+                && !existing_clients
+                    .iter()
+                    .any(|existing| existing.pid() == c.pid())
+        }));
 
         Ok(())
     }

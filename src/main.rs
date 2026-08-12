@@ -38,9 +38,12 @@ impl Args {
         if let Some(post_cmd) = &self.post_cmd {
             let post_cmd = post_cmd.split_whitespace().collect::<Vec<&str>>();
 
-            let command = post_cmd.first().context("Unable to parse --post_cmd.")?;
+            let command = post_cmd
+                .first()
+                .context("Unable to parse --post_cmd.")?
+                .to_owned();
 
-            let args = post_cmd.iter().skip(1).cloned().collect::<Vec<&str>>();
+            let args = post_cmd.into_iter().skip(1).collect::<Vec<&str>>();
 
             std::process::Command::new(command)
                 .args(args)
