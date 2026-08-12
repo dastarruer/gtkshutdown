@@ -27,10 +27,7 @@ impl AppState {
             .backend
             .open_clients()?
             .into_iter()
-            .filter(|c| {
-                // Filter out gtkshutdown so the app doesn't kill itself
-                c.app_id() != APP_ID
-            })
+            .filter(|c| c.app_id() != APP_ID && c.pid().as_raw() > 0)
             .collect();
 
         // Some apps may close their windows but still have leftover processes,

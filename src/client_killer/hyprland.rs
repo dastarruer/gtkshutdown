@@ -153,16 +153,10 @@ impl HyprlandBackend {
 impl WaylandBackend for HyprlandBackend {
     fn open_clients(&self) -> anyhow::Result<Vec<Client>> {
         let windows = Self::open_windows()?;
-        let windows = windows
-            .into_iter()
-            .filter(|c| {
-                // Skip negative PIDs to avoid nuking entire session
-                c.pid > 0
-            })
-            .map(Client::from);
+        let windows = windows.into_iter().map(Client::from);
 
         let layers = Self::open_layers()?;
-        let layers = layers.into_iter().filter(|c| c.pid > 0).map(Client::from);
+        let layers = layers.into_iter().map(Client::from);
 
         let mut clients = windows.chain(layers).collect::<Vec<Client>>();
         clients.sort();
