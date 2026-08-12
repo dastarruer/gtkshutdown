@@ -22,32 +22,21 @@ impl AppState {
     }
 
     pub fn refresh(&mut self) -> anyhow::Result<()> {
-        self.prune_dead_clients();
-        let existing_clients = self.clients.clone();
-        let open_clients = self.backend.open_clients()?;
-
-        self.clients.extend(open_clients.into_iter().filter(|c| {
-            // Filter out gtkshutdown so the app doesn't kill itself
-            c.app_id() != APP_ID
-                && !existing_clients
-                    .iter()
-                    .any(|existing| existing.pid() == c.pid())
-        }));
+        self.clients = self
+            .backend
+            .open_clients()?
+            .into_iter()
+            .filter(|c| {
+                // Filter out gtkshutdown so the app doesn't kill itself
+                c.app_id() != APP_ID
+            })
+            .collect();
 
         Ok(())
     }
-
-    fn prune_dead_clients(&mut self) {
-        self.clients.retain(|c| {
-            let is_alive = is_proc_alive(c.pid());
-            log::trace!("{} is alive: {is_alive}", c.app_id());
-
-            is_alive
-        });
-    }
 }
 
-fn is_proc_alive(pid: &Pid) -> bool {
+fn _is_proc_alive(pid: &Pid) -> bool {
     match kill(*pid, None) {
         Ok(_) => true,
         Err(nix::errno::Errno::EPERM) => true, // If we don't have permission to kill, assume proc is still running
