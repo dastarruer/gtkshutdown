@@ -63,10 +63,7 @@ struct HyprlandStatus {
 
 impl HyprlandStatus {
     fn is_using_lua(&self) -> bool {
-        match self.config_provider.as_str() {
-            "lua" => true,
-            _ => false, // very in-depth checks i know
-        }
+        self.config_provider.as_str() == "lua"
     }
 }
 
