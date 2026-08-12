@@ -333,7 +333,8 @@ mod tests {
 
         pretty_assertions::assert_eq!(monitors, expected);
 
-        let layers = HyprlandBackend::deserialize_layers_json(json);
+        let mut layers = HyprlandBackend::deserialize_layers_json(json);
+        layers.sort_by_key(|c| (c.pid, c.namespace.clone()));
         let expected = vec![
             expected_client.clone(),
             expected_client.clone(),
