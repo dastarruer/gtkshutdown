@@ -15,60 +15,6 @@ use nix::{
 
 use crate::client_killer::{hyprland::HyprlandBackend, sway::SwayBackend};
 
-enum KillAction {
-    Graceful,
-    Sigterm,
-    Sigkill,
-}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum KillStatus {
-    Alive,
-    GracefulSent(Instant),
-    TermSent(Instant),
-    KillSent,
-}
-
-impl Display for KillStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Alive => write!(f, "Alive"),
-            Self::GracefulSent(t) => {
-                write!(f, "GracefulSent ({:.1}s ago)", t.elapsed().as_secs_f32())
-            }
-            Self::TermSent(t) => write!(f, "TermSent ({:.1}s ago)", t.elapsed().as_secs_f32()),
-            Self::KillSent => write!(f, "KillSent"),
-        }
-    }
-}
-
-impl KillStatus {
-    fn update(self) -> Self {
-        match self {
-            Self::Alive => Self::GracefulSent(Instant::now()),
-            Self::GracefulSent(_) => Self::TermSent(Instant::now()),
-            Self::TermSent(_) => Self::KillSent,
-            Self::KillSent => Self::KillSent,
-        }
-    }
-
-    fn poll(&self) -> Option<KillAction> {
-        const SIGTERM_TIMEOUT: Duration = Duration::from_secs(15);
-        const SIGKILL_TIMEOUT: Duration = Duration::from_secs(30);
-
-        match self {
-            Self::Alive => Some(KillAction::Graceful),
-            Self::GracefulSent(instant) if instant.elapsed() > SIGTERM_TIMEOUT => {
-                Some(KillAction::Sigterm)
-            }
-            Self::TermSent(instant) if instant.elapsed() > SIGKILL_TIMEOUT => {
-                Some(KillAction::Sigkill)
-            }
-            _ => None,
-        }
-    }
-}
-
 pub struct ClientKiller {}
 
 impl ClientKiller {
@@ -110,35 +56,16 @@ impl ClientKiller {
         client: &mut Client,
     ) -> anyhow::Result<()> {
         let pid = *client.pid();
-        let status = client.status();
-
         let app_id = client.app_id();
-        if let Some(action) = status.poll() {
-            match action {
-                KillAction::Graceful => {
-                    if client.is_layer() || client.unique_id().is_empty() {
-                        log::debug!("Sending SIGTERM to client {app_id}...");
-                        kill(pid, Signal::SIGTERM)?;
 
-                        return Ok(());
-                    } else {
-                        log::debug!("Requesting graceful close to client {app_id}...");
-                        backend.gracefully_close(client)?;
-                    }
-                }
-                KillAction::Sigterm => {
-                    log::warn!("Sending SIGTERM to client {app_id}...");
-                    kill(pid, Signal::SIGTERM)?
-                }
-                KillAction::Sigkill => {
-                    log::warn!("Sending SIGKILL to client {app_id}...");
-                    kill(pid, Signal::SIGKILL)?;
-                }
-            }
+        if client.is_layer() || client.unique_id().is_empty() {
+            log::debug!("Sending SIGTERM to client {app_id}...");
+            kill(pid, Signal::SIGTERM)?;
 
-            log::trace!("Updating client {client} status...");
-            client.update_status();
-            log::trace!("New client status: {}", client.status());
+            return Ok(());
+        } else {
+            log::debug!("Requesting graceful close to client {app_id}...");
+            backend.gracefully_close(client)?;
         }
 
         Ok(())
@@ -148,13 +75,13 @@ impl ClientKiller {
 #[derive(PartialEq, Eq, Clone)]
 pub struct Client {
     pid: Pid,
-    // Used to quit apps. Since it may have different names across compositors, 
-    // it's called 'unique_id' 
-    unique_id: String, 
+    // Used to quit apps. Since it may have different names across compositors,
+    // it's called 'unique_id'
+    unique_id: String,
     kind: ClientKind,
     app_id: String,
     title: Option<String>,
-    status: KillStatus,
+    instant_started: Instant,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd)]
@@ -184,6 +111,23 @@ impl Ord for Client {
 }
 
 impl Client {
+    pub(self) fn new(
+        pid: Pid,
+        unique_id: String,
+        kind: ClientKind,
+        app_id: String,
+        title: Option<String>,
+    ) -> Self {
+        Self {
+            pid,
+            unique_id,
+            kind,
+            app_id,
+            title,
+            instant_started: Instant::now(),
+        }
+    }
+
     pub fn pid(&self) -> &Pid {
         &self.pid
     }
@@ -200,16 +144,12 @@ impl Client {
         self.kind == ClientKind::Layer
     }
 
-    pub fn status(&self) -> &KillStatus {
-        &self.status
-    }
-
     pub fn unique_id(&self) -> &str {
         &self.unique_id
     }
 
-    pub fn update_status(&mut self) {
-        self.status = self.status.clone().update();
+    pub fn instant_started(&self) -> &Instant {
+        &self.instant_started
     }
 
     /// Check if the client is asking the user to save their work. Note that
@@ -217,13 +157,13 @@ impl Client {
     /// based on if the client is still open even after requesting it to
     /// gracefully exit.
     pub fn may_be_saving(&self) -> bool {
-        matches!(self.status(), KillStatus::GracefulSent(instant) if instant.elapsed() > Duration::from_secs(5))
+        self.instant_started().elapsed() > Duration::from_secs(5)
     }
 
     /// Check if the client is hanging if after sending a SIGTERM signal, the
     /// client still hasn't died.
     pub fn may_be_hanging(&self) -> bool {
-        matches!(self.status(), KillStatus::TermSent(instant) if instant.elapsed() > Duration::from_secs(3))
+        self.instant_started().elapsed() > Duration::from_secs(10)
     }
 }
 

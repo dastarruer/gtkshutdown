@@ -11,7 +11,7 @@ use anyhow::{Context, bail};
 use nix::unistd::Pid;
 use serde::Deserialize;
 
-use crate::client_killer::{Client, ClientKind, KillStatus, WaylandBackend};
+use crate::client_killer::{Client, ClientKind, WaylandBackend};
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 struct HyprlandWindowClient {
@@ -23,14 +23,13 @@ struct HyprlandWindowClient {
 
 impl From<HyprlandWindowClient> for Client {
     fn from(value: HyprlandWindowClient) -> Self {
-        Self {
-            pid: Pid::from_raw(value.pid),
-            unique_id: value.address,
-            app_id: value.class,
-            title: Some(value.title),
-            kind: ClientKind::Window,
-            status: KillStatus::Alive,
-        }
+        Self::new(
+            Pid::from_raw(value.pid),
+            value.address,
+            ClientKind::Window,
+            value.class,
+            Some(value.title),
+        )
     }
 }
 
@@ -48,14 +47,13 @@ struct HyprlandLayerClient {
 
 impl From<HyprlandLayerClient> for Client {
     fn from(value: HyprlandLayerClient) -> Self {
-        Self {
-            pid: Pid::from_raw(value.pid),
-            unique_id: value.address,
-            app_id: value.namespace,
-            title: None,
-            kind: ClientKind::Layer,
-            status: KillStatus::Alive,
-        }
+        Self::new(
+            Pid::from_raw(value.pid),
+            value.address,
+            ClientKind::Layer,
+            value.namespace,
+            None,
+        )
     }
 }
 
