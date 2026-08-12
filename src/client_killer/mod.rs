@@ -8,7 +8,6 @@ use std::{
 
 use anyhow::Context;
 
-use ::hyprland::data::LayerClient;
 use nix::{
     sys::signal::{Signal, kill},
     unistd::Pid,
@@ -181,30 +180,6 @@ impl Ord for Client {
     }
 }
 
-impl From<::hyprland::data::Client> for Client {
-    fn from(value: ::hyprland::data::Client) -> Self {
-        Self {
-            pid: Pid::from_raw(value.pid),
-            title: Some(value.title.to_owned()),
-            app_id: value.class.to_owned(),
-            kind: ClientKind::Window,
-            status: KillStatus::Alive,
-        }
-    }
-}
-
-impl From<LayerClient> for Client {
-    fn from(value: LayerClient) -> Self {
-        Self {
-            pid: Pid::from_raw(value.pid),
-            title: None,                        // Layers do not have titles
-            app_id: value.namespace.to_owned(), // Layer namespace is close enough to an app ID
-            kind: ClientKind::Layer,
-            status: KillStatus::Alive,
-        }
-    }
-}
-
 impl Client {
     pub fn pid(&self) -> &Pid {
         &self.pid
@@ -262,7 +237,12 @@ pub fn detect_backend() -> Option<Box<dyn WaylandBackend>> {
 
     if let Ok(current_desktop) = &std::env::var("XDG_CURRENT_DESKTOP") {
         match current_desktop.as_str() {
-            HYPRLAND_STRING => return Some(Box::new(HyprlandBackend {})),
+            HYPRLAND_STRING => {
+                return Some(Box::new(
+                    HyprlandBackend::new()
+                        .expect("hyprland backend should be successfully initialized"),
+                ));
+            }
             SWAY_STRING => return Some(Box::new(SwayBackend {})),
             _ => return None,
         }
