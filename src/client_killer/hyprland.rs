@@ -99,7 +99,9 @@ impl HyprlandBackend {
     ///
     /// - Socket connection was unsuccessful
     fn ipc_stream() -> anyhow::Result<UnixStream> {
-        let xdg_runtime_dir = env::var("XDG_RUNTIME_DIR").expect("XDG_RUNTIME_DIR should exist");
+        let xdg_runtime_dir = env::var("XDG_RUNTIME_DIR")
+            .or_else(|_| std::env::var("UID").map(|uid| format!("/run/user/{uid}")))
+            .expect("UID should exist");
         let hyprland_instance_signature = env::var("HYPRLAND_INSTANCE_SIGNATURE")
             .expect("HYPRLAND_INSTANCE_SIGNATURE should exist");
         let socket_path =
