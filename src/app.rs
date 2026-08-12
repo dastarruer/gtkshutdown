@@ -2,7 +2,7 @@ use nix::{sys::signal::kill, unistd::Pid};
 
 use crate::{
     APP_ID,
-    client_killer::{Client, WaylandBackend},
+    client_killer::{Client, ClientKiller, WaylandBackend},
 };
 
 pub struct AppState {
@@ -22,6 +22,7 @@ impl AppState {
     }
 
     pub fn refresh(&mut self) -> anyhow::Result<()> {
+        let old_clients = self.clients.clone();
         self.clients = self
             .backend
             .open_clients()?
@@ -32,11 +33,22 @@ impl AppState {
             })
             .collect();
 
+        // Some apps may close their windows but still have leftover processes,
+        // and need to be SIGTERM'd.
+        //
+        // For instance, when exiting kitty, the window closes but there is
+        // still a .kitty-wrapped process that needs to be killed.
+        let to_be_killed = old_clients
+            .into_iter()
+            .filter(|c| !self.clients.contains(c) && is_proc_alive(c.pid()))
+            .collect::<Vec<Client>>();
+        ClientKiller::force_kill_clients(&to_be_killed)?;
+
         Ok(())
     }
 }
 
-fn _is_proc_alive(pid: &Pid) -> bool {
+fn is_proc_alive(pid: &Pid) -> bool {
     match kill(*pid, None) {
         Ok(_) => true,
         Err(nix::errno::Errno::EPERM) => true, // If we don't have permission to kill, assume proc is still running
