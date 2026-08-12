@@ -16,11 +16,7 @@ pub struct UiBuilder {
 }
 
 impl UiBuilder {
-    pub fn new(
-        app: &Application,
-        state: Rc<RefCell<AppState>>,
-        client_killer: Rc<RefCell<ClientKiller>>,
-    ) -> Self {
+    pub fn new(app: &Application, state: Rc<RefCell<AppState>>) -> Self {
         Self::load_css();
 
         let window = ApplicationWindow::builder()
@@ -39,7 +35,7 @@ impl UiBuilder {
 
         root.append(&header);
         root.append(&app_list);
-        root.append(&Self::build_footer(&window, client_killer, state));
+        root.append(&Self::build_footer(&window, state));
 
         window.set_child(Some(&root));
         Self {
@@ -156,11 +152,7 @@ impl UiBuilder {
         }
     }
 
-    fn build_footer(
-        window: &ApplicationWindow,
-        client_killer: Rc<RefCell<ClientKiller>>,
-        state: Rc<RefCell<AppState>>,
-    ) -> Box {
+    fn build_footer(window: &ApplicationWindow, state: Rc<RefCell<AppState>>) -> Box {
         let footer = Box::builder()
             .orientation(Orientation::Horizontal)
             .spacing(8)
@@ -172,13 +164,10 @@ impl UiBuilder {
 
         force_quit_btn.connect_clicked(move |_| {
             log::info!("Force killing all open clients...");
-            client_killer
-                .borrow_mut()
-                .force_kill_clients(&state.borrow().clients)
-                .unwrap_or_else(|e| {
-                    log::error!("Error force-killing all open clients: {e}");
-                    std::process::exit(1);
-                });
+            ClientKiller::force_kill_clients(&state.borrow().clients).unwrap_or_else(|e| {
+                log::error!("Error force-killing all open clients: {e}");
+                std::process::exit(1);
+            });
         });
 
         let cancel_btn = Button::builder().label("Cancel").build();
