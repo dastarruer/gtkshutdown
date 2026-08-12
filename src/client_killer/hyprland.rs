@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::Context;
+use anyhow::{Context, bail};
 use nix::unistd::Pid;
 use serde::Deserialize;
 
@@ -124,6 +124,9 @@ impl HyprlandBackend {
         let mut response = String::new();
         stream.read_to_string(&mut response)?;
 
+        if response.contains("error") || response.contains("unknown request") {
+            bail!(response)
+        }
         Ok(response)
     }
 
