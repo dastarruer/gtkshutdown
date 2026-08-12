@@ -47,7 +47,8 @@ in
 
       postInstall = ''
         if [ -f "$out/bin/gtkshutdown" ]; then
-          wrapGApp $out/bin/gtkshutdown
+          wrapGApp $out/bin/gtkshutdown \
+            --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath commonArgs.buildInputs}"
         fi
       '';
 
