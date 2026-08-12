@@ -15,14 +15,10 @@ use nix::{
 
 use crate::client_killer::{hyprland::HyprlandBackend, sway::SwayBackend};
 
-pub struct ClientKiller {}
+pub struct ClientKiller;
 
 impl ClientKiller {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn force_kill_clients(&self, clients: &[Client]) -> nix::Result<()> {
+    pub fn force_kill_clients(clients: &[Client]) -> nix::Result<()> {
         for client in clients {
             kill(*client.pid(), Signal::SIGKILL)?;
         }
@@ -31,14 +27,13 @@ impl ClientKiller {
     }
 
     pub fn kill_clients(
-        &mut self,
         backend: &dyn WaylandBackend,
         clients: &mut [Client],
     ) -> anyhow::Result<()> {
         for client in clients {
             log::trace!("Attempting to kill client {client}...");
 
-            self.kill_client(backend, client).with_context(|| {
+            Self::kill_client(backend, client).with_context(|| {
                 format!(
                     "Failed to kill client {} (pid: {})",
                     client.app_id(),
@@ -50,11 +45,7 @@ impl ClientKiller {
         Ok(())
     }
 
-    fn kill_client(
-        &mut self,
-        backend: &dyn WaylandBackend,
-        client: &mut Client,
-    ) -> anyhow::Result<()> {
+    fn kill_client(backend: &dyn WaylandBackend, client: &mut Client) -> anyhow::Result<()> {
         let pid = *client.pid();
         let app_id = client.app_id();
 

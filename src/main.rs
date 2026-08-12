@@ -59,7 +59,6 @@ struct AppHandler {
     args: Args,
     state: Rc<RefCell<AppState>>,
     ui: UiBuilder,
-    client_killer: Rc<RefCell<ClientKiller>>,
 }
 
 impl AppHandler {
@@ -68,18 +67,12 @@ impl AppHandler {
         args: Args,
         backend: Box<dyn WaylandBackend>,
     ) -> anyhow::Result<Self> {
-        let client_killer = Rc::new(RefCell::new(ClientKiller::new()));
         let state = Rc::new(RefCell::new(
             AppState::new(backend).context("Failed to get clients from Hyprland.")?,
         ));
-        let ui = UiBuilder::new(app, Rc::clone(&state), Rc::clone(&client_killer));
+        let ui = UiBuilder::new(app, Rc::clone(&state));
 
-        Ok(Self {
-            args,
-            state,
-            ui,
-            client_killer,
-        })
+        Ok(Self { args, state, ui })
     }
 
     /// Execute a single tick of the app.
@@ -101,9 +94,7 @@ impl AppHandler {
             let AppState {
                 backend, clients, ..
             } = &mut *state;
-            self.client_killer
-                .borrow_mut()
-                .kill_clients(&**backend, clients)?;
+            ClientKiller::kill_clients(&**backend, clients)?;
         }
 
         self.ui.update(&self.state.borrow());
