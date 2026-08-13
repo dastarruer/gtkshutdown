@@ -23,7 +23,7 @@ also leads to less data corruption.
 
 ### Nix
 
-Add the following to `flake.nix`:
+To install the package, first add the following to your `flake.nix` inputs:
 
 ```nix
 gtkshutdown = {
@@ -32,15 +32,10 @@ gtkshutdown = {
 };
 ```
 
-Then, in `configuration.nix`, add the following:
+Then add the following to your `configuration.nix`:
 
 ```nix
 environment.systemPackages = [
-  inputs.gtkshutdown.packages.${pkgs.stdenv.system}.default
-];
-
-# OR if using home-manager:
-home.packages = [
   inputs.gtkshutdown.packages.${pkgs.stdenv.system}.default
 ];
 ```
