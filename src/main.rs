@@ -114,33 +114,7 @@ impl AppHandler {
 }
 
 fn main() -> glib::ExitCode {
-    let log_dir = std::env::var("XDG_STATE_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            let home = std::env::var("HOME").expect("HOME is not set");
-            PathBuf::from(home).join(".local/state")
-        })
-        .join("gtkshutdown");
-
-    let _logger = Logger::try_with_env()
-        .expect("Value of RUST_LOG is malformed")
-        .log_to_file(
-            FileSpec::default()
-                .directory(log_dir)
-                .basename("gtkshutdown"),
-        )
-        .duplicate_to_stdout(flexi_logger::Duplicate::Trace)
-        .rotate(
-            flexi_logger::Criterion::Size(1000000),
-            flexi_logger::Naming::Numbers,
-            flexi_logger::Cleanup::KeepLogFiles(5),
-        )
-        .start()
-        .expect("Logger failed to start");
-
-    let args = Args::parse();
-    let app = Application::builder().application_id(APP_ID).build();
-
+    let (args, app) = bootstrap_app();
     app.connect_activate(move |app| {
         let backend = detect_backend().expect("XDG_CURRENT_DESKTOP should be set.");
 
@@ -179,4 +153,34 @@ fn main() -> glib::ExitCode {
 
     // Overwrite gtk cli args to use our own
     app.run_with_args::<&str>(&[])
+}
+
+fn bootstrap_app() -> (Args, Application) {
+    let log_dir = std::env::var("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            let home = std::env::var("HOME").expect("HOME is not set");
+            PathBuf::from(home).join(".local/state")
+        })
+        .join("gtkshutdown");
+
+    let _logger = Logger::try_with_env()
+        .expect("Value of RUST_LOG is malformed")
+        .log_to_file(
+            FileSpec::default()
+                .directory(log_dir)
+                .basename("gtkshutdown"),
+        )
+        .duplicate_to_stdout(flexi_logger::Duplicate::Trace)
+        .rotate(
+            flexi_logger::Criterion::Size(1000000),
+            flexi_logger::Naming::Numbers,
+            flexi_logger::Cleanup::KeepLogFiles(5),
+        )
+        .start()
+        .expect("Logger failed to start");
+
+    let args = Args::parse();
+    let app = Application::builder().application_id(APP_ID).build();
+    (args, app)
 }
