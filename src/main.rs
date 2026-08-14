@@ -97,9 +97,13 @@ impl AppHandler {
             log::info!("The killing begins! Killing open clients...");
             let mut state = self.state.borrow_mut();
             let AppState {
-                backend, clients, ..
+                backend,
+                clients,
+                to_be_killed,
+                ..
             } = &mut *state;
             ClientKiller::kill_clients(&**backend, clients)?;
+            ClientKiller::force_kill_clients(to_be_killed)?;
         }
 
         self.ui.update(&self.state.borrow());
