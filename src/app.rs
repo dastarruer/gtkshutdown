@@ -7,6 +7,13 @@ use crate::{
 
 pub struct AppState {
     pub clients: Vec<Client>,
+    /// Some apps may close their windows but still have leftover processes,
+    /// and need to be `SIGTERM`'d.
+    ///
+    /// For instance, when exiting kitty, the window closes but there is
+    /// still a `.kitty-wrapped` process that needs to be killed before kitty
+    /// can be properly shut down.
+    pub to_be_killed: Vec<Client>,
     pub backend: Box<dyn WaylandBackend>,
 }
 
@@ -14,7 +21,11 @@ impl AppState {
     pub fn new(backend: Box<dyn WaylandBackend>) -> anyhow::Result<Self> {
         let clients = backend.open_clients()?;
 
-        Ok(Self { clients, backend })
+        Ok(Self {
+            clients,
+            backend,
+            to_be_killed: Vec::new(),
+        })
     }
 
     pub fn get_num_clients(&self) -> usize {
@@ -30,16 +41,10 @@ impl AppState {
             .filter(|c| c.app_id() != APP_ID && c.pid().as_raw() > 0)
             .collect();
 
-        // Some apps may close their windows but still have leftover processes,
-        // and need to be SIGTERM'd.
-        //
-        // For instance, when exiting kitty, the window closes but there is
-        // still a .kitty-wrapped process that needs to be killed.
-        let to_be_killed = old_clients
+        self.to_be_killed = old_clients
             .into_iter()
             .filter(|c| !self.clients.contains(c) && is_proc_alive(c.pid()))
             .collect::<Vec<Client>>();
-        ClientKiller::force_kill_clients(&to_be_killed)?;
 
         Ok(())
     }
