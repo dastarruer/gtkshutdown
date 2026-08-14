@@ -13,6 +13,7 @@ use client_killer::ClientKiller;
 use flexi_logger::{FileSpec, Logger};
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
+use nix::unistd::daemon;
 use ui::UiBuilder;
 
 use crate::client_killer::{WaylandBackend, detect_backend};
@@ -31,6 +32,10 @@ struct Args {
     /// gtkshutdown runs nothing after exiting.
     #[arg(short, long)]
     post_cmd: Option<String>,
+
+    /// Do not run in the background.
+    #[arg(short, long, action)]
+    no_fork: bool,
 }
 
 impl Args {
@@ -115,6 +120,11 @@ impl AppHandler {
 
 fn main() -> glib::ExitCode {
     let (args, app) = bootstrap_app();
+
+    if !args.no_fork {
+        daemon(false, false).expect("process should be successfully forked");
+    }
+
     app.connect_activate(move |app| {
         let backend = detect_backend().expect("XDG_CURRENT_DESKTOP should be set.");
 
