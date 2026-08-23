@@ -12,7 +12,8 @@
       name = baseNameOf path;
     in
       craneLib.filterCargoSources path type
-      || name == "style.css"; # Keep style.css; filter out all other unnecessary files
+      || name == "style.css"
+      || pkgs.lib.hasInfix "/fixtures/" path;
     name = "source";
   };
 
