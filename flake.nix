@@ -97,5 +97,12 @@
 
     packages.${system}.default = gtkshutdown;
     devShells.${system}.default = devshell;
+    checks.${system} = {
+      tests = gtkshutdown.overrideAttrs (_: {
+        doCheck = true;
+      });
+      build = gtkshutdown;
+      pre-commit = pre-commit-check;
+    };
   };
 }
