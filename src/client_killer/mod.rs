@@ -70,7 +70,11 @@ pub struct Client {
     // it's called 'unique_id'
     unique_id: String,
     kind: ClientKind,
+    /// The title of the app. For instance, an Anki window might have a `anki`
+    /// app ID.
     app_id: String,
+    /// The title of the open app page. For instance, an Anki window might have
+    /// a `User 1 - Anki` title.
     title: Option<String>,
     instant_started: Instant,
 }
