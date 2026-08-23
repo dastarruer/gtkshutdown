@@ -1,7 +1,11 @@
 [package]
 name = "gtkshutdown"
-version = "0.1.0"
+description = "A graceful shutdown utility for Wayland compositors"
+repository = "https://github.com/dastarruer/gtkshutdown"
+license = "BSD-3-Clause"
+version = "0.1.3"
 edition = "2024"
+authors = ["dastarruer"]
 
 [dependencies]
 anyhow = "1.0.102"
