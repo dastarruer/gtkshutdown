@@ -2,7 +2,7 @@ use nix::{sys::signal::kill, unistd::Pid};
 
 use crate::{
     APP_ID,
-    client_killer::{Client, ClientKiller, WaylandBackend},
+    client_killer::{Client, WaylandBackend},
 };
 
 pub struct AppState {
