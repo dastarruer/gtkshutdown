@@ -46,8 +46,7 @@ in {
   # The state version can safely track the latest release because the disk
   # image is ephemeral.
   system.stateVersion = config.system.nixos.release;
-  home-manager.users.guest.home.stateVersion =
-    config.system.nixos.release;
+  home-manager.users.guest.home.stateVersion = "26.05"; # home-manager version does have to be pinned though
 
   home-manager.sharedModules = lib.singleton {
     programs.kitty.enable = true;
