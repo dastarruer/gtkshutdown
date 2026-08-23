@@ -18,7 +18,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(backend: Box<dyn WaylandBackend>) -> anyhow::Result<Self> {
+    pub fn new(mut backend: Box<dyn WaylandBackend>) -> anyhow::Result<Self> {
         let clients = backend.open_clients()?;
 
         Ok(Self {

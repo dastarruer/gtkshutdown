@@ -15,6 +15,8 @@ use nix::{
 
 use crate::client_killer::{hyprland::HyprlandBackend, sway::SwayBackend};
 
+const UNKNOWN_CLIENT_TITLE: &str = "(unknown)";
+
 pub struct ClientKiller;
 
 impl ClientKiller {
@@ -63,7 +65,7 @@ impl ClientKiller {
     }
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Client {
     pid: Pid,
     // Used to quit apps. Since it may have different names across compositors,
@@ -79,7 +81,7 @@ pub struct Client {
     instant_started: Instant,
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Debug)]
 enum ClientKind {
     Window,
     Layer,
@@ -164,7 +166,7 @@ impl Client {
 
 pub trait WaylandBackend {
     /// Retrieves all currently-open clients.
-    fn open_clients(&self) -> anyhow::Result<Vec<Client>>;
+    fn open_clients(&mut self) -> anyhow::Result<Vec<Client>>;
 
     /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
     /// signal, so apps have a chance to gracefully exit.
@@ -185,7 +187,11 @@ pub fn detect_backend() -> Option<Box<dyn WaylandBackend>> {
                         .expect("hyprland backend should be successfully initialized"),
                 ));
             }
-            SWAY_STRING => return Some(Box::new(SwayBackend {})),
+            SWAY_STRING => {
+                return Some(Box::new(
+                    SwayBackend::new().expect("sway backend should be successfully initialized"),
+                ));
+            }
             _ => return None,
         }
     }
