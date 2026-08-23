@@ -42,6 +42,7 @@ inputs.git-hooks.lib.${system}.run {
     prettier = {
       enable = true;
       settings.configPath = ".prettierrc";
+      files = "\\.(md|json)$";
     };
     markdownlint.enable = true;
   };
