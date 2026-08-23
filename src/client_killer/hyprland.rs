@@ -151,7 +151,7 @@ impl HyprlandBackend {
 }
 
 impl WaylandBackend for HyprlandBackend {
-    fn open_clients(&mut self) -> anyhow::Result<Vec<Client>> {
+    fn open_clients(&self) -> anyhow::Result<Vec<Client>> {
         let windows = Self::open_windows()?;
         let windows = windows.into_iter().map(Client::from);
 

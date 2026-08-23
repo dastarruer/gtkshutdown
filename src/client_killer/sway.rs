@@ -1,3 +1,5 @@
+use std::{cell::RefCell};
+
 use anyhow::bail;
 use nix::unistd::Pid;
 use swayipc::{Connection, Node, NodeType};
@@ -98,21 +100,22 @@ impl RootNode {
 }
 
 pub(super) struct SwayBackend {
-    connection: Connection,
+    connection: RefCell<Connection>,
 }
 
 impl SwayBackend {
     pub(super) fn new() -> anyhow::Result<Self> {
-        let connection = Connection::new()?;
+        let connection = RefCell::new(Connection::new()?);
         Ok(Self { connection })
     }
 }
 
 impl WaylandBackend for SwayBackend {
-    fn open_clients(&mut self) -> anyhow::Result<Vec<Client>> {
-        let root = RootNode::try_from(self.connection.get_tree()?)?;
+    fn open_clients(&self) -> anyhow::Result<Vec<Client>> {
+        let root = RootNode::try_from(self.connection.borrow_mut().get_tree()?)?;
 
-        // TODO: Also return layers
+        // Sway doesn't expose layer information, so this just returns window
+        // client types instead
         Ok(root.clients().into_iter().map(Client::from).collect())
     }
 
