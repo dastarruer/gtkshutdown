@@ -53,6 +53,12 @@ in {
 
     # Enable Bash to ensure environment variables are set.
     programs.bash.enable = true;
+
+    # Enable waybar for testing layer client teardown
+    programs.waybar = {
+      enable = true;
+      systemd.enable = true;
+    };
   };
 
   virtualisation.vmVariant.virtualisation = {
