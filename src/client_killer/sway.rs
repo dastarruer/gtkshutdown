@@ -1,4 +1,4 @@
-use std::{cell::RefCell};
+use std::cell::RefCell;
 
 use anyhow::bail;
 use nix::unistd::Pid;
@@ -120,7 +120,9 @@ impl WaylandBackend for SwayBackend {
     }
 
     fn gracefully_close(&self, client: &super::Client) -> anyhow::Result<()> {
-        todo!()
+        let cmd = format!(r#"[pid={}] kill"#, client.pid());
+        self.connection.borrow_mut().run_command(cmd)?;
+        Ok(())
     }
 }
 
