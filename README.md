@@ -1,9 +1,6 @@
 # gtkshutdown
 
-A graceful shutdown utility that closes all apps before exiting.
-
-Currently only supports Hyprland, but I plan to expand support to other Wayland
-window managers.
+A graceful shutdown utility that closes all apps before exiting. 
 
 ![Screenshot of gtkshutdown](./docs/preview.jpg)
 
