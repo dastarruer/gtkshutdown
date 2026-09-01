@@ -11,18 +11,18 @@ use anyhow::{Context, bail};
 use nix::unistd::Pid;
 use serde::Deserialize;
 
-use crate::backends::{Client, ClientKind, WaylandBackend};
+use crate::backends::{ClientKind, WaylandBackend};
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
-struct HyprlandWindowClient {
+struct WindowClient {
     pid: i32,
     address: String,
     class: String,
     title: String,
 }
 
-impl From<HyprlandWindowClient> for Client {
-    fn from(value: HyprlandWindowClient) -> Self {
+impl From<WindowClient> for super::Client {
+    fn from(value: WindowClient) -> Self {
         Self::new(
             Pid::from_raw(value.pid),
             value.address,
@@ -35,18 +35,18 @@ impl From<HyprlandWindowClient> for Client {
 
 #[derive(serde::Deserialize, Clone, Debug, PartialEq, Eq)]
 struct Monitor {
-    levels: HashMap<String, Vec<HyprlandLayerClient>>,
+    levels: HashMap<String, Vec<LayerClient>>,
 }
 
 #[derive(serde::Deserialize, Clone, Debug, PartialEq, Eq)]
-struct HyprlandLayerClient {
+struct LayerClient {
     pid: i32,
     address: String,
     namespace: String,
 }
 
-impl From<HyprlandLayerClient> for Client {
-    fn from(value: HyprlandLayerClient) -> Self {
+impl From<LayerClient> for super::Client {
+    fn from(value: LayerClient) -> Self {
         Self::new(
             Pid::from_raw(value.pid),
             value.address,
@@ -70,11 +70,11 @@ impl HyprlandStatus {
 }
 
 #[derive(Clone)]
-pub(super) struct HyprlandBackend {
+pub(super) struct Backend {
     is_using_lua: bool,
 }
 
-impl HyprlandBackend {
+impl Backend {
     pub(super) fn new() -> anyhow::Result<Self> {
         let status = Self::status()?;
         let is_using_lua = status.is_using_lua();
@@ -129,18 +129,18 @@ impl HyprlandBackend {
         Ok(response)
     }
 
-    fn open_windows() -> anyhow::Result<Vec<HyprlandWindowClient>> {
+    fn open_windows() -> anyhow::Result<Vec<WindowClient>> {
         let response = Self::send_ipc_request("j/clients")?;
-        Ok(serde_json::from_str::<Vec<HyprlandWindowClient>>(&response)
+        Ok(serde_json::from_str::<Vec<WindowClient>>(&response)
             .expect("IPC windows response JSON should be successfully deserialized"))
     }
 
-    fn open_layers() -> anyhow::Result<Vec<HyprlandLayerClient>> {
+    fn open_layers() -> anyhow::Result<Vec<LayerClient>> {
         let response = Self::send_ipc_request("j/layers")?;
         Ok(Self::deserialize_layers_json(&response))
     }
 
-    fn deserialize_layers_json(json: &str) -> Vec<HyprlandLayerClient> {
+    fn deserialize_layers_json(json: &str) -> Vec<LayerClient> {
         serde_json::from_str::<HashMap<String, Monitor>>(json)
             .expect("IPC layers response JSON should be successfully deserialized")
             .into_values()
@@ -150,22 +150,22 @@ impl HyprlandBackend {
     }
 }
 
-impl WaylandBackend for HyprlandBackend {
-    fn open_clients(&self) -> anyhow::Result<Vec<Client>> {
+impl WaylandBackend for Backend {
+    fn open_clients(&self) -> anyhow::Result<Vec<super::Client>> {
         let windows = Self::open_windows()?;
-        let windows = windows.into_iter().map(Client::from);
+        let windows = windows.into_iter().map(super::Client::from);
 
         let layers = Self::open_layers()?;
-        let layers = layers.into_iter().map(Client::from);
+        let layers = layers.into_iter().map(super::Client::from);
 
-        let mut clients = windows.chain(layers).collect::<Vec<Client>>();
+        let mut clients = windows.chain(layers).collect::<Vec<super::Client>>();
         clients.sort();
         clients.dedup();
 
         Ok(clients)
     }
 
-    fn gracefully_close(&self, client: &Client) -> anyhow::Result<()> {
+    fn gracefully_close(&self, client: &super::Client) -> anyhow::Result<()> {
         let address = client.unique_id();
         let cmd = if self.is_using_lua {
             format!("dispatch hl.dsp.window.close({{ window = \"address:{address}\" }})")
@@ -213,9 +213,9 @@ mod tests {
                 "stableId": "1800001b"
             }]
         "#};
-        let client = serde_json::from_str::<Vec<HyprlandWindowClient>>(json)
+        let client = serde_json::from_str::<Vec<WindowClient>>(json)
             .expect("test JSON should be successfully deserialized");
-        let expected = vec![HyprlandWindowClient {
+        let expected = vec![WindowClient {
             pid: 3441,
             address: String::from("0x6071d717d3c0"),
             title: String::from("~"),
@@ -298,7 +298,7 @@ mod tests {
         let monitors = serde_json::from_str::<HashMap<String, Monitor>>(json)
             .expect("test JSON should be successfully deserialized");
 
-        let expected_client = HyprlandLayerClient {
+        let expected_client = LayerClient {
             pid: 3442,
             address: String::from("0x6071d7158a90"),
             namespace: String::from("layer"),
@@ -332,7 +332,7 @@ mod tests {
 
         pretty_assertions::assert_eq!(monitors, expected);
 
-        let mut layers = HyprlandBackend::deserialize_layers_json(json);
+        let mut layers = Backend::deserialize_layers_json(json);
         layers.sort_by_key(|c| (c.pid, c.namespace.clone()));
         let expected = vec![
             expected_client.clone(),

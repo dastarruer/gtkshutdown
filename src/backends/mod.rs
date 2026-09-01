@@ -13,8 +13,6 @@ use nix::{
     unistd::Pid,
 };
 
-use crate::backends::{hyprland::HyprlandBackend, sway::SwayBackend};
-
 const UNKNOWN_CLIENT_TITLE: &str = "(unknown)";
 
 pub struct ClientKiller;
@@ -183,13 +181,13 @@ pub fn detect_backend() -> Option<Box<dyn WaylandBackend>> {
         match current_desktop.as_str() {
             HYPRLAND_STRING => {
                 return Some(Box::new(
-                    HyprlandBackend::new()
+                    hyprland::Backend::new()
                         .expect("hyprland backend should be successfully initialized"),
                 ));
             }
             SWAY_STRING => {
                 return Some(Box::new(
-                    SwayBackend::new().expect("sway backend should be successfully initialized"),
+                    sway::Backend::new().expect("sway backend should be successfully initialized"),
                 ));
             }
             _ => return None,
