@@ -1,5 +1,5 @@
 mod app;
-mod client_killer;
+mod backends;
 mod ui;
 
 use std::cell::RefCell;
@@ -8,15 +8,15 @@ use std::rc::Rc;
 
 use anyhow::Context;
 use app::AppState;
+use backends::ClientKiller;
 use clap::Parser;
-use client_killer::ClientKiller;
 use flexi_logger::{FileSpec, Logger};
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
 use nix::unistd::daemon;
 use ui::UiBuilder;
 
-use crate::client_killer::{WaylandBackend, detect_backend};
+use crate::backends::{WaylandBackend, detect_backend};
 
 pub const APP_ID: &str = "io.github.dastarruer.gtkshutdown";
 

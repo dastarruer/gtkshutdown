@@ -11,7 +11,7 @@ use anyhow::{Context, bail};
 use nix::unistd::Pid;
 use serde::Deserialize;
 
-use crate::client_killer::{Client, ClientKind, WaylandBackend};
+use crate::backends::{Client, ClientKind, WaylandBackend};
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 struct HyprlandWindowClient {

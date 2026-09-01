@@ -4,7 +4,7 @@ use anyhow::bail;
 use nix::unistd::Pid;
 use swayipc::{Connection, Node, NodeType};
 
-use crate::client_killer::{Client, ClientKind, UNKNOWN_CLIENT_TITLE, WaylandBackend};
+use crate::backends::{Client, ClientKind, UNKNOWN_CLIENT_TITLE, WaylandBackend};
 
 #[derive(Debug, PartialEq)]
 struct SwayClient {

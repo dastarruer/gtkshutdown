@@ -13,7 +13,7 @@ use nix::{
     unistd::Pid,
 };
 
-use crate::client_killer::{hyprland::HyprlandBackend, sway::SwayBackend};
+use crate::backends::{hyprland::HyprlandBackend, sway::SwayBackend};
 
 const UNKNOWN_CLIENT_TITLE: &str = "(unknown)";
 
