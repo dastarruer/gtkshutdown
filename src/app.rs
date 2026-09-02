@@ -38,7 +38,11 @@ impl AppState {
             .backend
             .open_clients()?
             .into_iter()
-            .filter(|c| c.app_id() != APP_ID && c.pid().as_raw() > 0)
+            .filter(|c| {
+                c.app_id() != APP_ID
+                    && c.pid().as_raw() > 0
+                    && c.pid() != self.backend.compositor_id()
+            })
             .collect();
 
         self.to_be_killed = old_clients

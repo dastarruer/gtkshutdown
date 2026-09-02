@@ -17,6 +17,7 @@ nix = { version = "0.31.3", features = ["signal"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 swayipc = "4.0.0"
+sysinfo = "0.39.6"
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
