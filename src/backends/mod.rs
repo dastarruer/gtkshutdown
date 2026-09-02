@@ -45,20 +45,18 @@ impl ClientKiller {
         Ok(())
     }
 
-    fn kill_client(backend: &dyn WaylandBackend, client: &mut Client) -> anyhow::Result<()> {
+    fn kill_client(backend: &dyn WaylandBackend, client: &Client) -> anyhow::Result<()> {
         let pid = *client.pid();
         let app_id = client.app_id();
-
         if client.is_layer() || client.unique_id().is_empty() {
             log::debug!("Sending SIGTERM to client {app_id}...");
             kill(pid, Signal::SIGTERM)?;
 
             return Ok(());
-        } else {
-            log::debug!("Requesting graceful close to client {app_id}...");
-            backend.gracefully_close(client)?;
         }
 
+        log::debug!("Requesting graceful close to client {app_id}...");
+        backend.gracefully_close(client)?;
         Ok(())
     }
 }
@@ -123,7 +121,7 @@ impl Client {
         }
     }
 
-    pub fn pid(&self) -> &Pid {
+    pub const fn pid(&self) -> &Pid {
         &self.pid
     }
 
@@ -143,7 +141,7 @@ impl Client {
         &self.unique_id
     }
 
-    pub fn instant_started(&self) -> &Instant {
+    pub const fn instant_started(&self) -> &Instant {
         &self.instant_started
     }
 

@@ -86,7 +86,7 @@ impl AppHandler {
     ///
     /// - `true` if all clients have been closed.
     /// - `false` if clients are still open.
-    fn tick(&mut self) -> anyhow::Result<bool> {
+    fn tick(&self) -> anyhow::Result<bool> {
         log::info!("Refreshing client list...");
         self.state
             .borrow_mut()
@@ -132,7 +132,7 @@ fn main() -> glib::ExitCode {
     app.connect_activate(move |app| {
         let backend = detect_backend().expect("XDG_CURRENT_DESKTOP should be set.");
 
-        let mut handler = AppHandler::new(app, args.clone(), backend).unwrap_or_else(|e| {
+        let handler = AppHandler::new(app, args.clone(), backend).unwrap_or_else(|e| {
             log::error!("Error starting app: {e}");
             std::process::exit(1);
         });
@@ -140,13 +140,11 @@ fn main() -> glib::ExitCode {
         handler.ui.window.present();
         log::debug!("Window created!");
 
-        glib::timeout_add_local(std::time::Duration::from_millis(150), move || match handler
-            .tick()
-            .unwrap_or_else(|e| {
+        glib::timeout_add_local(std::time::Duration::from_millis(150), move || {
+            if handler.tick().unwrap_or_else(|e| {
                 log::error!("Error running app tick: {e}");
                 std::process::exit(1);
             }) {
-            true => {
                 log::info!("All apps have been shut down, closing...");
                 handler.ui.window.close();
 
@@ -156,12 +154,10 @@ fn main() -> glib::ExitCode {
                     std::process::exit(1);
                 });
 
-                glib::ControlFlow::Break
+                return glib::ControlFlow::Break;
             }
-            false => {
-                log::debug!("All apps have not been shut down, moving on to the next tick...");
-                glib::ControlFlow::Continue
-            }
+            log::debug!("All apps have not been shut down, moving on to the next tick...");
+            glib::ControlFlow::Continue
         });
     });
 
@@ -171,11 +167,13 @@ fn main() -> glib::ExitCode {
 
 fn bootstrap_app() -> (Args, Application) {
     let log_dir = std::env::var("XDG_STATE_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            let home = std::env::var("HOME").expect("HOME is not set");
-            PathBuf::from(home).join(".local/state")
-        })
+        .map_or_else(
+            |_| {
+                let home = std::env::var("HOME").expect("HOME is not set");
+                PathBuf::from(home).join(".local/state")
+            },
+            PathBuf::from,
+        )
         .join("gtkshutdown");
 
     let _logger = Logger::try_with_env()
@@ -187,7 +185,7 @@ fn bootstrap_app() -> (Args, Application) {
         )
         .duplicate_to_stdout(flexi_logger::Duplicate::Trace)
         .rotate(
-            flexi_logger::Criterion::Size(1000000),
+            flexi_logger::Criterion::Size(1_000_000),
             flexi_logger::Naming::Numbers,
             flexi_logger::Cleanup::KeepLogFiles(5),
         )

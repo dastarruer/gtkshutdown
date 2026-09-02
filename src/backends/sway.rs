@@ -76,7 +76,7 @@ impl TryFrom<Node> for RootNode {
             bail!("expected root node type, got {node_type:?}")
         }
 
-        Ok(RootNode(value))
+        Ok(Self(value))
     }
 }
 
@@ -124,7 +124,7 @@ impl WaylandBackend for Backend {
     }
 
     fn gracefully_close(&self, client: &super::Client) -> anyhow::Result<()> {
-        let cmd = format!(r#"[pid={}] kill"#, client.pid());
+        let cmd = format!("[pid={}] kill", client.pid());
         self.connection.borrow_mut().run_command(cmd)?;
         Ok(())
     }

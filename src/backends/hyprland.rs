@@ -180,39 +180,10 @@ impl WaylandBackend for Backend {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use indoc::indoc;
 
     #[test]
     fn deserialize_window_client() {
-        let json = indoc! {r#"
-            [{
-                "address": "0x6071d717d3c0",
-                "floating": false,
-                "monitor": 1,
-                "class": "window",
-                "title": "~",
-                "initialClass": "window",
-                "initialTitle": "window",
-                "pid": 3441,
-                "xwayland": false,
-                "pinned": false,
-                "pinFullscreened": false,
-                "fullscreen": 0,
-                "fullscreenClient": 0,
-                "fullscreenHandler": "scrolling",
-                "allowedOverFullscreen": false,
-                "grouped": [],
-                "tags": [],
-                "swallowing": "0x0",
-                "focusHistoryID": 1,
-                "inhibitingIdle": false,
-                "xdgTag": "",
-                "xdgDescription": "",
-                "contentType": "none",
-                "tearingHint": false,
-                "stableId": "1800001b"
-            }]
-        "#};
+        let json = include_str!("fixtures/hyprland/window.json");
         let client = serde_json::from_str::<Vec<WindowClient>>(json)
             .expect("test JSON should be successfully deserialized");
         let expected = vec![WindowClient {
@@ -227,74 +198,7 @@ mod tests {
 
     #[test]
     fn deserialize_layer_clients() {
-        let json = indoc! {r#"
-            {
-            "monitor_1": {
-                "levels": {
-                    "0": [
-                            {
-                                "address": "0x6071d7158a90",
-                                "x": 1920,
-                                "y": 0,
-                                "w": 1920,
-                                "h": 1080,
-                                "alpha": 1,
-                                "namespace": "layer",
-                                "pid": 3442
-                            }
-                    ],
-                    "1": [
-            ],
-                    "2": [
-                            {
-                                "address": "0x6071d7158a90",
-                                "x": 1920,
-                                "y": 0,
-                                "w": 1920,
-                                "h": 48,
-                                "alpha": 1,
-                                "namespace": "layer",
-                                "pid": 3442
-                            }
-                    ],
-                    "3": [
-            ]
-                }
-            },"monitor_2": {
-                "levels": {
-
-                    "0": [
-                            {
-                                "address": "0x6071d7158a90",
-                                "x": 0,
-                                "y": 0,
-                                "w": 1920,
-                                "h": 1080,
-                                "alpha": 1,
-                                "namespace": "layer",
-                                "pid": 3442
-                            }
-                    ],
-                    "1": [
-            ],
-                    "2": [
-                            {
-                                "address": "0x6071d7158a90",
-                                "x": 0,
-                                "y": 0,
-                                "w": 1920,
-                                "h": 48,
-                                "alpha": 0,
-                                "namespace": "layer",
-                                "pid": 3442
-                            }
-                    ],
-                    "3": [
-            ]
-                }
-            }
-            }
-        "#};
+        let json = include_str!("fixtures/hyprland/clients.json");
         let monitors = serde_json::from_str::<HashMap<String, Monitor>>(json)
             .expect("test JSON should be successfully deserialized");
 
