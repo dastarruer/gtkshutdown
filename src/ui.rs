@@ -45,7 +45,7 @@ impl UiBuilder {
         }
     }
 
-    pub fn update(&mut self, state: &AppState) {
+    pub fn update(&self, state: &AppState) {
         Self::update_app_list(&self.app_list, state);
         Self::update_header(&self.header, state.get_num_clients());
     }

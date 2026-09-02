@@ -28,7 +28,7 @@ impl AppState {
         })
     }
 
-    pub fn get_num_clients(&self) -> usize {
+    pub const fn get_num_clients(&self) -> usize {
         self.clients.len()
     }
 
@@ -43,17 +43,17 @@ impl AppState {
 
         self.to_be_killed = old_clients
             .into_iter()
-            .filter(|c| !self.clients.contains(c) && is_proc_alive(c.pid()))
+            .filter(|c| !self.clients.contains(c) && is_proc_alive(*c.pid()))
             .collect::<Vec<Client>>();
 
         Ok(())
     }
 }
 
-fn is_proc_alive(pid: &Pid) -> bool {
-    match kill(*pid, None) {
-        Ok(_) => true,
-        Err(nix::errno::Errno::EPERM) => true, // If we don't have permission to kill, assume proc is still running
+fn is_proc_alive(pid: Pid) -> bool {
+    match kill(pid, None) {
+        // If we don't have permission to kill, assume proc is still running
+        Ok(()) | Err(nix::errno::Errno::EPERM) => true,
         Err(_) => false,
     }
 }

@@ -227,74 +227,7 @@ mod tests {
 
     #[test]
     fn deserialize_layer_clients() {
-        let json = indoc! {r#"
-            {
-            "monitor_1": {
-                "levels": {
-                    "0": [
-                            {
-                                "address": "0x6071d7158a90",
-                                "x": 1920,
-                                "y": 0,
-                                "w": 1920,
-                                "h": 1080,
-                                "alpha": 1,
-                                "namespace": "layer",
-                                "pid": 3442
-                            }
-                    ],
-                    "1": [
-            ],
-                    "2": [
-                            {
-                                "address": "0x6071d7158a90",
-                                "x": 1920,
-                                "y": 0,
-                                "w": 1920,
-                                "h": 48,
-                                "alpha": 1,
-                                "namespace": "layer",
-                                "pid": 3442
-                            }
-                    ],
-                    "3": [
-            ]
-                }
-            },"monitor_2": {
-                "levels": {
-
-                    "0": [
-                            {
-                                "address": "0x6071d7158a90",
-                                "x": 0,
-                                "y": 0,
-                                "w": 1920,
-                                "h": 1080,
-                                "alpha": 1,
-                                "namespace": "layer",
-                                "pid": 3442
-                            }
-                    ],
-                    "1": [
-            ],
-                    "2": [
-                            {
-                                "address": "0x6071d7158a90",
-                                "x": 0,
-                                "y": 0,
-                                "w": 1920,
-                                "h": 48,
-                                "alpha": 0,
-                                "namespace": "layer",
-                                "pid": 3442
-                            }
-                    ],
-                    "3": [
-            ]
-                }
-            }
-            }
-        "#};
+        let json = include_str!("fixtures/hyprland/clients.json");
         let monitors = serde_json::from_str::<HashMap<String, Monitor>>(json)
             .expect("test JSON should be successfully deserialized");
 
