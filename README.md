@@ -1,6 +1,6 @@
 # gtkshutdown
 
-A graceful shutdown utility that closes all apps before exiting. 
+A graceful shutdown utility that closes all apps before exiting.
 
 ![Screenshot of gtkshutdown](./docs/preview.jpg)
 
@@ -52,7 +52,6 @@ Usage: gtkshutdown [OPTIONS]
 Options:
   -d, --dry-run              Whether to only do a dry-run, where apps are not closed but the UI is still shown
   -p, --post-cmd <POST_CMD>  Set a command to be run after all apps have shut down. By default, gtkshutdown runs nothing after exiting
-  -n, --no-fork              Do not run in the background
   -h, --help                 Print help
   -V, --version              Print version
 ```
