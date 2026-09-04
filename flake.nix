@@ -64,6 +64,7 @@
       hyprland = mkVm "hyprland";
       hyprland-lua = mkVm "hyprland-lua";
       sway = mkVm "sway";
+      mango = mkVm "mango";
     };
 
     apps.${system} = let
