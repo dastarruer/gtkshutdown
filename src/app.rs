@@ -18,14 +18,12 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(backend: Box<dyn WaylandBackend>) -> anyhow::Result<Self> {
-        let clients = backend.open_clients()?;
-
-        Ok(Self {
-            clients,
+    pub fn new(backend: Box<dyn WaylandBackend>) -> Self {
+        Self {
+            clients: Vec::new(), // This will repopulate itself automatically, since its length is already 0
             backend,
             to_be_killed: Vec::new(),
-        })
+        }
     }
 
     pub const fn get_num_clients(&self) -> usize {
@@ -34,23 +32,24 @@ impl AppState {
 
     pub fn refresh(&mut self) -> anyhow::Result<()> {
         let old_clients = self.clients.clone();
+
         self.clients = self
             .backend
             .open_clients()?
             .into_iter()
-            .filter(|c| {
-                c.app_id() != APP_ID
-                    && c.pid().as_raw() > 0
-                    && c.pid() != self.backend.compositor_id()
-            })
+            .filter(|c| self.is_safe_to_kill(c))
             .collect();
-
         self.to_be_killed = old_clients
             .into_iter()
             .filter(|c| !self.clients.contains(c) && is_proc_alive(*c.pid()))
             .collect::<Vec<Client>>();
-
         Ok(())
+    }
+
+    fn is_safe_to_kill(&self, client: &Client) -> bool {
+        client.app_id() != APP_ID
+            && client.pid().as_raw() > 0
+            && client.pid() != self.backend.compositor_id()
     }
 }
 

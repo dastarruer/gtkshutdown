@@ -51,7 +51,7 @@ pkgs.testers.runNixOSTest {
         machine.wait_until_succeeds(f"pgrep -f {proc}")
 
     print("Starting gtkshutdown")
-    run_as_guest(f'gtkshutdown --post-cmd "touch {marker}" --no-fork')
+    run_as_guest(f'gtkshutdown --post-cmd "touch {marker}"')
 
     print("Checking that apps are closed")
     for proc in ["firefox", "kitty", "thunar", "waybar"]:
