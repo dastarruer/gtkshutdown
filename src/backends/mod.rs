@@ -1,4 +1,5 @@
 pub mod hyprland;
+pub mod mango;
 pub mod sway;
 
 use std::{
@@ -174,6 +175,7 @@ pub trait WaylandBackend {
 pub fn detect_backend() -> Option<Box<dyn WaylandBackend>> {
     const HYPRLAND_STRING: &str = "Hyprland";
     const SWAY_STRING: &str = "sway";
+    const MANGO_STRING: &str = "mango";
 
     if let Ok(current_desktop) = &std::env::var("XDG_CURRENT_DESKTOP") {
         match current_desktop.as_str() {
@@ -186,6 +188,11 @@ pub fn detect_backend() -> Option<Box<dyn WaylandBackend>> {
             SWAY_STRING => {
                 return Some(Box::new(
                     sway::Backend::new().expect("sway backend should be successfully initialized"),
+                ));
+            }
+            MANGO_STRING => {
+                return Some(Box::new(
+                    mango::Backend::new().expect("mango should be successfully initialized"),
                 ));
             }
             _ => return None,
