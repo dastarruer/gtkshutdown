@@ -96,6 +96,7 @@ The following VMs are currently available:
 - `.#hyprland`
 - `.#hyprland-lua`
 - `.#sway`
+- `.#mango`
 
 ### Testing the app
 
