@@ -12,6 +12,7 @@ use nix::{
     sys::signal::{Signal, kill},
     unistd::Pid,
 };
+use sysinfo::{ProcessRefreshKind, RefreshKind, System};
 
 const UNKNOWN_CLIENT_TITLE: &str = "(unknown)";
 
@@ -167,6 +168,8 @@ pub trait WaylandBackend {
     /// Meant to be used first before sending SIGTERM (and eventually SIGKILL)
     /// signal, so apps have a chance to gracefully exit.
     fn gracefully_close(&self, client: &Client) -> anyhow::Result<()>;
+
+    fn compositor_id(&self) -> &Pid;
 }
 
 /// Detects and returns the required backend by checking
@@ -193,4 +196,15 @@ pub fn detect_backend() -> Option<Box<dyn WaylandBackend>> {
     }
 
     None
+}
+
+fn compositor_pid(proc_name: &str) -> Pid {
+    let system = System::new_with_specifics(
+        RefreshKind::nothing().with_processes(ProcessRefreshKind::everything()),
+    );
+    let proc = system
+        .processes_by_exact_name(proc_name.as_ref())
+        .next()
+        .expect("proc_name should be a valid process");
+    Pid::from_raw(proc.pid().as_u32().cast_signed())
 }

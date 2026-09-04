@@ -48,6 +48,7 @@
 
     pre-commit-check = (import ./nix/dev/pre-commit.nix) {inherit inputs system toolchain;};
     devshell = (import ./nix/dev/devshell.nix) {inherit pkgs toolchain pre-commit-check;};
+    myTest = import ./nix/dev/tests {inherit pkgs inputs gtkshutdown;};
 
     mkVm = name:
       nixpkgs.lib.nixosSystem {
@@ -101,6 +102,7 @@
       tests = gtkshutdown.overrideAttrs (_: {
         doCheck = true;
       });
+      test = myTest;
       build = gtkshutdown;
       pre-commit = pre-commit-check;
     };

@@ -4,7 +4,7 @@ use anyhow::bail;
 use nix::unistd::Pid;
 use swayipc::{Connection, Node, NodeType};
 
-use crate::backends::{ClientKind, UNKNOWN_CLIENT_TITLE, WaylandBackend};
+use crate::backends::{ClientKind, UNKNOWN_CLIENT_TITLE, WaylandBackend, compositor_pid};
 
 #[derive(Debug, PartialEq)]
 struct Client {
@@ -101,12 +101,17 @@ impl RootNode {
 
 pub(super) struct Backend {
     connection: RefCell<Connection>,
+    compositor_pid: Pid,
 }
 
 impl Backend {
     pub(super) fn new() -> anyhow::Result<Self> {
         let connection = RefCell::new(Connection::new()?);
-        Ok(Self { connection })
+        let compositor_pid = compositor_pid("sway");
+        Ok(Self {
+            connection,
+            compositor_pid,
+        })
     }
 }
 
@@ -127,6 +132,10 @@ impl WaylandBackend for Backend {
         let cmd = format!("[pid={}] kill", client.pid());
         self.connection.borrow_mut().run_command(cmd)?;
         Ok(())
+    }
+
+    fn compositor_id(&self) -> &Pid {
+        &self.compositor_pid
     }
 }
 

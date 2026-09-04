@@ -11,7 +11,7 @@ use anyhow::{Context, bail};
 use nix::unistd::Pid;
 use serde::Deserialize;
 
-use crate::backends::{ClientKind, WaylandBackend};
+use crate::backends::{ClientKind, WaylandBackend, compositor_pid};
 
 #[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 struct WindowClient {
@@ -72,14 +72,19 @@ impl HyprlandStatus {
 #[derive(Clone)]
 pub(super) struct Backend {
     is_using_lua: bool,
+    compositor_pid: Pid,
 }
 
 impl Backend {
     pub(super) fn new() -> anyhow::Result<Self> {
         let status = Self::status()?;
         let is_using_lua = status.is_using_lua();
+        let compositor_pid = compositor_pid("Hyprland");
 
-        Ok(Self { is_using_lua })
+        Ok(Self {
+            is_using_lua,
+            compositor_pid,
+        })
     }
 
     /// Returns the result of `hyprctl status`.
@@ -174,6 +179,10 @@ impl WaylandBackend for Backend {
         };
         Self::send_ipc_request(&cmd)?;
         Ok(())
+    }
+
+    fn compositor_id(&self) -> &Pid {
+        &self.compositor_pid
     }
 }
 
