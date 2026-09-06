@@ -1,9 +1,6 @@
 use nix::{sys::signal::kill, unistd::Pid};
 
-use crate::{
-    APP_ID,
-    backends::{Client, WaylandBackend},
-};
+use crate::backends::{Client, WaylandBackend};
 
 pub struct AppState {
     pub clients: Vec<Client>,
@@ -38,7 +35,9 @@ impl AppState {
             .backend
             .open_clients()?
             .into_iter()
-            .filter(|c| c.app_id() != APP_ID && c.pid().as_raw() > 0)
+            .filter(|c| {
+                c.pid().as_raw().cast_unsigned() != std::process::id() && c.pid().as_raw() > 0
+            })
             .collect();
 
         self.to_be_killed = old_clients
