@@ -41,17 +41,9 @@ struct Args {
 impl Args {
     fn execute_post_cmd(&self) -> anyhow::Result<()> {
         if let Some(post_cmd) = &self.post_cmd {
-            let post_cmd = post_cmd.split_whitespace().collect::<Vec<&str>>();
-
-            let command = post_cmd
-                .first()
-                .context("Unable to parse --post_cmd.")?
-                .to_owned();
-
-            let args = post_cmd.into_iter().skip(1).collect::<Vec<&str>>();
-
-            std::process::Command::new(command)
-                .args(args)
+            std::process::Command::new("sh")
+                .arg("-c")
+                .arg(post_cmd)
                 .spawn()
                 .context("Unable to execute --post-cmd.")?;
         }
