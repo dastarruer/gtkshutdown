@@ -85,8 +85,8 @@ impl Backend {
     /// Returns the result of `hyprctl status`.
     fn status() -> anyhow::Result<HyprlandStatus> {
         let response = Self::send_ipc_request("j/status")?;
-        Ok(serde_json::from_str::<HyprlandStatus>(&response)
-            .expect("IPC status JSON should be successfully deserialized"))
+        serde_json::from_str::<HyprlandStatus>(&response)
+            .context("failed to deserialize IPC status JSON")
     }
 
     /// Constructs and returns a stream connection to the hyprland socket. This
@@ -131,22 +131,22 @@ impl Backend {
 
     fn open_windows() -> anyhow::Result<Vec<WindowClient>> {
         let response = Self::send_ipc_request("j/clients")?;
-        Ok(serde_json::from_str::<Vec<WindowClient>>(&response)
-            .expect("IPC windows response JSON should be successfully deserialized"))
+        serde_json::from_str::<Vec<WindowClient>>(&response)
+            .context("failed to deserialize IPC windows JSON")
     }
 
     fn open_layers() -> anyhow::Result<Vec<LayerClient>> {
         let response = Self::send_ipc_request("j/layers")?;
-        Ok(Self::deserialize_layers_json(&response))
+        Self::deserialize_layers_json(&response)
     }
 
-    fn deserialize_layers_json(json: &str) -> Vec<LayerClient> {
-        serde_json::from_str::<HashMap<String, Monitor>>(json)
-            .expect("IPC layers response JSON should be successfully deserialized")
+    fn deserialize_layers_json(json: &str) -> anyhow::Result<Vec<LayerClient>> {
+        Ok(serde_json::from_str::<HashMap<String, Monitor>>(json)
+            .context("failed to deserialize IPC layers JSON")?
             .into_values()
             .flat_map(|m| m.levels.into_values())
             .flatten()
-            .collect()
+            .collect())
     }
 }
 
@@ -200,7 +200,7 @@ mod tests {
     fn deserialize_layer_clients() {
         let json = include_str!("fixtures/hyprland/clients.json");
         let monitors = serde_json::from_str::<HashMap<String, Monitor>>(json)
-            .expect("test JSON should be successfully deserialized");
+            .expect("test monitors JSON should be successfully deserialized");
 
         let expected_client = LayerClient {
             pid: 3442,
@@ -236,7 +236,8 @@ mod tests {
 
         pretty_assertions::assert_eq!(monitors, expected);
 
-        let mut layers = Backend::deserialize_layers_json(json);
+        let mut layers = Backend::deserialize_layers_json(json)
+            .expect("test layers JSON should be successfully deserialized");
         layers.sort_by_key(|c| (c.pid, c.namespace.clone()));
         let expected = vec![
             expected_client.clone(),
