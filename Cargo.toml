@@ -10,6 +10,7 @@ authors = ["dastarruer"]
 [dependencies]
 anyhow = "1.0.102"
 clap = { version = "4.6.1", features = ["derive"] }
+command-ext = "0.1.2"
 flexi_logger = "0.31.9"
 gtk4 = "0.10.3"
 log = "0.4.30"
