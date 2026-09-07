@@ -15,14 +15,12 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(backend: Box<dyn WaylandBackend>) -> anyhow::Result<Self> {
-        let clients = backend.open_clients()?;
-
-        Ok(Self {
-            clients,
+    pub fn new(backend: Box<dyn WaylandBackend>) -> Self {
+        Self {
+            clients: Vec::new(),
             backend,
             to_be_killed: Vec::new(),
-        })
+        }
     }
 
     pub const fn get_num_clients(&self) -> usize {
