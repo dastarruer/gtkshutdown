@@ -119,7 +119,10 @@ impl AppHandler {
 fn main() -> glib::ExitCode {
     let (args, app) = bootstrap_app();
     app.connect_activate(move |app| {
-        let backend = detect_backend().expect("XDG_CURRENT_DESKTOP should be set.");
+        let backend = detect_backend().unwrap_or_else(|e| {
+            log::error!("Error detecting current compositor: {e}");
+            std::process::exit(1);
+        });
 
         let mut handler = AppHandler::new(app, args.clone(), backend);
         handler.ui.window.present();

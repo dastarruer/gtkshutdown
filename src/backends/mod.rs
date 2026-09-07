@@ -7,7 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::Context;
+use anyhow::{Context, bail};
 
 use nix::{
     sys::signal::{Signal, kill},
@@ -172,7 +172,7 @@ pub trait WaylandBackend {
 
 /// Detects and returns the required backend by checking
 /// `XDG_CURRENT_DESKTOP`.
-pub fn detect_backend() -> Option<Box<dyn WaylandBackend>> {
+pub fn detect_backend() -> anyhow::Result<Box<dyn WaylandBackend>> {
     const HYPRLAND_STRING: &str = "Hyprland";
     const SWAY_STRING: &str = "sway";
     const MANGO_STRING: &str = "mango";
@@ -180,24 +180,27 @@ pub fn detect_backend() -> Option<Box<dyn WaylandBackend>> {
     if let Ok(current_desktop) = &std::env::var("XDG_CURRENT_DESKTOP") {
         match current_desktop.as_str() {
             HYPRLAND_STRING => {
-                return Some(Box::new(
+                return Ok(Box::new(
                     hyprland::Backend::new()
                         .expect("hyprland backend should be successfully initialized"),
                 ));
             }
             SWAY_STRING => {
-                return Some(Box::new(
+                return Ok(Box::new(
                     sway::Backend::new().expect("sway backend should be successfully initialized"),
                 ));
             }
             MANGO_STRING => {
-                return Some(Box::new(
+                return Ok(Box::new(
                     mango::Backend::new().expect("mango should be successfully initialized"),
                 ));
             }
-            _ => return None,
+            _ => {
+                bail!(
+                    "XDG_CURRENT_DESKTOP is set to an unsupported compositor string: {current_desktop}. If you'd like me to add support for this compositor, please open an issue upstream: https://github.com/dastarruer/gtkshutdown/issues"
+                );
+            }
         }
     }
-
-    None
+    bail!("XDG_CURRENT_DESKTOP is not set, is a compositor running?")
 }
