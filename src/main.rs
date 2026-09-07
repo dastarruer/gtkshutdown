@@ -10,9 +10,11 @@ use anyhow::Context;
 use app::AppState;
 use backends::ClientKiller;
 use clap::Parser;
+use command_ext::{CommandExtCheck, CommandExtLog};
 use flexi_logger::{FileSpec, Logger};
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
+use log::Level;
 use ui::UiBuilder;
 
 use crate::backends::{WaylandBackend, detect_backend};
@@ -36,11 +38,14 @@ struct Args {
 impl Args {
     fn execute_post_cmd(&self) -> anyhow::Result<()> {
         if let Some(post_cmd) = &self.post_cmd {
-            std::process::Command::new("sh")
-                .arg("-c")
-                .arg(post_cmd)
-                .spawn()
-                .context("Unable to execute --post-cmd.")?;
+            std::process::Command::new("bash")
+                .args(["-c", post_cmd])
+                .log_args(Level::Debug)
+                .log_status(Level::Info)
+                .log_stdout(Level::Trace)
+                .log_stderr(Level::Warn)
+                .check()
+                .context("unable to execute --post-cmd.")?;
         }
 
         Ok(())
@@ -139,6 +144,7 @@ fn main() -> glib::ExitCode {
                 return glib::ControlFlow::Break;
             }
             log::debug!("All apps have not been shut down, moving on to the next tick...");
+            // FIXME: after the first time this is returned, tick() is run again but then
             glib::ControlFlow::Continue
         });
     });
