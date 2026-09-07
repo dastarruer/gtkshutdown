@@ -56,13 +56,19 @@ struct AppHandler {
     args: Args,
     state: Rc<RefCell<AppState>>,
     ui: UiBuilder,
+    is_first_tick: bool,
 }
 
 impl AppHandler {
     fn new(app: &Application, args: Args, backend: Box<dyn WaylandBackend>) -> Self {
         let state = Rc::new(RefCell::new(AppState::new(backend)));
         let ui = UiBuilder::new(app, Rc::clone(&state));
-        Self { args, state, ui }
+        Self {
+            args,
+            state,
+            ui,
+            is_first_tick: true,
+        }
     }
 
     /// Execute a single tick of the app.
@@ -71,7 +77,7 @@ impl AppHandler {
     ///
     /// - `true` if all clients have been closed.
     /// - `false` if clients are still open.
-    fn tick(&self) -> anyhow::Result<bool> {
+    fn tick(&mut self) -> anyhow::Result<bool> {
         log::info!("Refreshing client list...");
         self.state
             .borrow_mut()
@@ -88,7 +94,9 @@ impl AppHandler {
                 ..
             } = &mut *state;
             ClientKiller::kill_clients(&**backend, clients)?;
-            ClientKiller::force_kill_clients(to_be_killed)?;
+            if !self.is_first_tick {
+                ClientKiller::force_kill_clients(to_be_killed)?;
+            }
         }
 
         self.ui.update(&self.state.borrow());
@@ -98,6 +106,8 @@ impl AppHandler {
             "App is completed: {is_complete}, Number of clients: {}",
             self.state.borrow().get_num_clients()
         );
+
+        self.is_first_tick = false;
         Ok(is_complete)
     }
 
@@ -111,7 +121,7 @@ fn main() -> glib::ExitCode {
     app.connect_activate(move |app| {
         let backend = detect_backend().expect("XDG_CURRENT_DESKTOP should be set.");
 
-        let handler = AppHandler::new(app, args.clone(), backend);
+        let mut handler = AppHandler::new(app, args.clone(), backend);
         handler.ui.window.present();
         log::debug!("Window created!");
 
