@@ -59,17 +59,10 @@ struct AppHandler {
 }
 
 impl AppHandler {
-    fn new(
-        app: &Application,
-        args: Args,
-        backend: Box<dyn WaylandBackend>,
-    ) -> anyhow::Result<Self> {
-        let state = Rc::new(RefCell::new(
-            AppState::new(backend).context("Failed to get clients from Hyprland.")?,
-        ));
+    fn new(app: &Application, args: Args, backend: Box<dyn WaylandBackend>) -> Self {
+        let state = Rc::new(RefCell::new(AppState::new(backend)));
         let ui = UiBuilder::new(app, Rc::clone(&state));
-
-        Ok(Self { args, state, ui })
+        Self { args, state, ui }
     }
 
     /// Execute a single tick of the app.
@@ -105,7 +98,6 @@ impl AppHandler {
             "App is completed: {is_complete}, Number of clients: {}",
             self.state.borrow().get_num_clients()
         );
-
         Ok(is_complete)
     }
 
@@ -119,11 +111,7 @@ fn main() -> glib::ExitCode {
     app.connect_activate(move |app| {
         let backend = detect_backend().expect("XDG_CURRENT_DESKTOP should be set.");
 
-        let handler = AppHandler::new(app, args.clone(), backend).unwrap_or_else(|e| {
-            log::error!("Error starting app: {e}");
-            std::process::exit(1);
-        });
-
+        let handler = AppHandler::new(app, args.clone(), backend);
         handler.ui.window.present();
         log::debug!("Window created!");
 
