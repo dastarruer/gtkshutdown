@@ -29,7 +29,10 @@ pkgs.mkShell rec {
     glib
   ];
 
-  env.LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
+  env = {
+    RUST_LOG = "trace";
+    LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildInputs;
+  };
 
   shellHook = ''
     # Install pre-commit hooks
