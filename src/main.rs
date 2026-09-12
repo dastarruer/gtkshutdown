@@ -11,10 +11,10 @@ use app::AppState;
 use backends::ClientKiller;
 use clap::Parser;
 use command_ext::{CommandExtCheck, CommandExtLog};
+use daemonize::Daemonize;
 use flexi_logger::{FileSpec, Logger};
 use gtk4::prelude::*;
 use gtk4::{Application, glib};
-use nix::unistd::daemon;
 use log::Level;
 use ui::UiBuilder;
 
@@ -125,7 +125,9 @@ fn main() -> glib::ExitCode {
     let (args, app) = bootstrap_app();
 
     if !args.no_fork {
-        daemon(false, false).expect("process should be successfully forked");
+        Daemonize::new()
+            .start()
+            .expect("process should be successfully forked");
     }
 
     app.connect_activate(move |app| {
